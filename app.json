@@ -1,0 +1,11 @@
+{
+  "expo": {
+    "name": "hompaiMobile",
+    "slug": "hompaiMobile",
+    "version": "1.0.0",
+    "assetBundlePatterns": [
+      "**/*"
+    ]
+  },
+  "name": "hompaiMobile"
+}
