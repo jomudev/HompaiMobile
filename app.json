@@ -1,11 +1,13 @@
 {
   "expo": {
-    "name": "hompaiMobile",
-    "slug": "hompaiMobile",
-    "version": "1.0.0",
+    "name": "Hompai",
+    "slug": "Hompai",
+    "description": "Save your wallet and pantry from ",
+    "version": "0.0.1",
     "assetBundlePatterns": [
       "**/*"
     ]
   },
-  "name": "hompaiMobile"
+  "name": "Hompai",
+  "plugins": ["@react-native-google-signin/google-signin"]
 }

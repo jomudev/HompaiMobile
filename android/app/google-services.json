@@ -1,0 +1,47 @@
+{
+  "project_info": {
+    "project_number": "926926409859",
+    "project_id": "hompai",
+    "storage_bucket": "hompai.appspot.com"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:926926409859:android:22373d7d56717a77360bb6",
+        "android_client_info": {
+          "package_name": "com.hompaimobile"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "926926409859-0il8uveddaq6er7bkkfjlltl8np59m10.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.hompaimobile",
+            "certificate_hash": "fb48994723db9d5145e4629182cfb2309cb4d43b"
+          }
+        },
+        {
+          "client_id": "926926409859-spfdfdqoarff6itj9lqau5uqj4h8orte.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBXoT_Ve_4d28Uo-CowdBWnPN8ufMDN_YM"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "926926409859-m6ju46ktr2ju46i0gqkobkdv0fgdi3al.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

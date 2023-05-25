@@ -1,4 +1,7 @@
 import { registerRootComponent } from 'expo';
+const env = process.env;
+import { GoogleSignin } from '@react-native-google-signin/google-signin';
+GoogleSignin.configure()
 
 import App from './App';
 
