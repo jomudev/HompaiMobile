@@ -33,7 +33,6 @@ local.properties
 .cxx/
 *.keystore
 !debug.keystore
-google-services.*
 
 # node.js
 #
@@ -54,3 +53,8 @@ yarn-error.log
 .expo/
 web-build/
 dist/
+
+#app
+google-services.json
+authorization.js
+

@@ -1,13 +1,10 @@
 import { StatusBar } from 'expo-status-bar';
-import React, { useEffect, useState } from 'react';
+import React, { useState } from 'react';
 import { ToastAndroid, View, TouchableOpacity, Text, StyleSheet, TextInput } from 'react-native';
 import { GoogleSignin, statusCodes } from '@react-native-google-signin/google-signin';
 import Database from './modules/database';
-import auth from '@react-native-firebase/auth';
 
 export default function App() {
-
-  Database.getAllUsers().then(res=> console.log('users', res));
   const [email, setEmail] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -25,18 +22,6 @@ export default function App() {
     userNotFound: "Más despacio velocista🚴 no encontramos tu usuario, verifica nuevamente",
     emailAlreadyInUse: "😅 Ya hay un usuario con ese correo",
   }
-  
-  useEffect(() => {
-    const subscriber = () => auth().onAuthStateChanged( user => {
-      if (!user) {
-        return;
-      }
-      ToastAndroid.show("user signed" + user.displayName, ToastAndroid.LONG);
-      console.log("user signed: ", user);
-    });
-
-    return subscriber();
-  }, []);
   
   const signInWithGoogle = async () => {
     try {
@@ -114,16 +99,21 @@ export default function App() {
         ToastAndroid.show(errorMessages.passwordNotMatch, ToastAndroid.LONG);
         return;
       }
-      let user = await auth().createUserWithEmailAndPassword(email, newPassword);
+      const user = {
+        email,
+        password: newPassword,
+        displayName: null,
+        phoneNumber: null,
+        photoURL: null,
+      };
       const res = await Database.createUser(user);
-      console.log(user, res);
-      auth().signOut();
+      console.log(res);
     } catch (err) {
       const errorsCode = {
         "auth/user-not-found": errorMessages.userNotFound,
         "auth/email-already-in-use": errorMessages.emailAlreadyInUse,
       };
-      console.log(err);
+      console.error(err.stack);
       ToastAndroid.show(errorsCode[err.code] || errorMessages.unknown, ToastAndroid.LONG);
     }
   };
@@ -142,7 +132,8 @@ export default function App() {
       </Text>
       <TextInput 
         style={styles.textInput} 
-        onChangeText={text => setEmail(text)} 
+        onChangeText={text => setEmail(text)}
+        textContentType='emailAddress'
         placeholder="johndoe@gmail.com"
         />
       {
@@ -199,7 +190,6 @@ const styles = StyleSheet.create({
     marginBottom: 16,
     backgroundColor: "#FFF3F2",
     borderRadius: 16,
-    textAlign: 'center',
     paddingHorizontal: 16,
     paddingVertical: 16,
     width: "52%",
