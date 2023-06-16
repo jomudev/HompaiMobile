@@ -6,8 +6,13 @@
     "version": "0.0.1",
     "assetBundlePatterns": [
       "**/*"
+    ],
+    "android": {
+      "googleServicesFile": "./google-services.json"
+    },
+    "plugins": [
+      "@react-native-firebase/app",
+      "@react-native-google-signin/google-signin"
     ]
-  },
-  "name": "Hompai",
-  "plugins": ["@react-native-google-signin/google-signin"]
+  }
 }

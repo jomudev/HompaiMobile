@@ -1,7 +1,12 @@
 import { registerRootComponent } from 'expo';
 const env = process.env;
 import { GoogleSignin } from '@react-native-google-signin/google-signin';
-GoogleSignin.configure()
+GoogleSignin.configure({
+  webClientId: env.FB_WEB_CLIENT_ID || "926926409859-spfdfdqoarff6itj9lqau5uqj4h8orte.apps.googleusercontent.com",
+  offlineAccess: false,
+});
+
+window.fixed = (value) => isNaN(value) ? "0.00" : parseFloat(value).toFixed(2);
 
 import App from './App';
 
