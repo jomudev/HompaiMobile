@@ -1,9 +1,10 @@
 export default {
     background: "white",
-    primary: "#D9D9D9",
-    secondary: "#FFF3F2",
+    primary: "#F9DEDC",
+    secondary: "#F5EFF7",
     text: "#222222",
     textMuted: "#8E8383",
-    danger:  "#FF7C73",
+    danger:  "#B3261E",
     warning: "#ddbb00",
+    card: "#E8DEF8",
 };

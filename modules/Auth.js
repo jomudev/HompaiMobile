@@ -1,14 +1,22 @@
 import Auth from '@react-native-firebase/auth';
 import { GoogleSignin, statusCodes } from '@react-native-google-signin/google-signin';
 
-export default {
-  signInWithGoogle: async () => {
+export default class AppAuth {
+  static instance = null;
+
+  static getInstance() {
+    if (!this.instance) {
+      this.instance = new Auth();
+    }
+    return this.instance;
+  }
+  
+  async signInWithGoogle () {
     try {
       await GoogleSignin.hasPlayServices({ showPlayServicesUpdateDialog: true });
     } catch (err) {
       console.error(err);
       throw new Error("Servicios de Google Play no disponibles");
-      return;
     }
     var token;
     try {
@@ -31,8 +39,8 @@ export default {
     } catch(err) {
       console.error(err);
     }
-  },
-  currentUser: Auth().currentUser,
-  signOut: () => Auth().signOut(),
-  onAuthStateChanged: (callback) => Auth().onAuthStateChanged(callback),
+  }
+  currentUser = Auth().currentUser
+  signOut = Auth().signOut
+  onAuthStateChanged = Auth().onAuthStateChanged
 };

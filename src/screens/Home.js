@@ -1,26 +1,34 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { 
   Layout, 
   Container, 
   Heading, 
-  Button, 
+  LazyButton, 
+  Button,
   Row, 
   Text,
   Col,
+  ListPicker,
 } from '../components/UI';
 import { 
+  AddPantry,
   AddedArticlesList,
   ArticleForm,
-  ArticleRow,
+  Modal,
+  PantryCreator,
 } from '../components/HomeComponents';
 import Storage from '../../modules/Storage';
+import PantryStore from '../../modules/PantryStore';
 import colors from '../../res/colors';
+import screens from '../../res/screens';
+import { Link } from '@react-navigation/native';
 
 const storage = Storage.getInstance();
+const pantry = PantryStore.getInstance();
 
 function addArticleToList(article, list) {
   if (article.name.trim() === "") {
-    return;
+    return list;
   }
   list = list.articlesList.concat(article);
   storage.store("articleActualList", list);
@@ -28,10 +36,18 @@ function addArticleToList(article, list) {
 }
 
 function listModifier(list, id, property, value) {
-  if (value.trim() === "") {
+  if (typeof value === "string" && value.trim() === "") {
     return list;
   }
-  list = list.map((item) => item.id === id ? {...item, [property]: value} : item);
+  list = list.map((item) => 
+    item.id === id 
+    ? {
+        ...item, 
+        [property]: typeof value === "string" 
+                      ? value.trim() 
+                      : value
+      } 
+    : item);
   storage.store("articleActualList", list);
   return list;
 }
@@ -43,18 +59,33 @@ function deleteArticleFromList(id, list) {
 }
 
 const initialState = {
+  pantries: [],
   articlesList: [],
   initializingList: true,
 };
 
+async function getPantries() {
+  return await pantry.getPantries() || [];
+}
+
 export default function Home () {
   const [state, setState] = useState(initialState);
-  
+  const modalRef = useRef();
+  const pantryRef = useRef();
+
   useEffect(() => {
-    (async function () {
-      const articlesList = await storage.get("articleActualList")
-      setState({...state, articlesList, initializingList: false});
-    })();
+    async function fetchData() {
+      const articlesList = await storage.get("articleActualList");
+      let newState = {
+        ...state,
+        articlesList,
+        initializingList: false,
+      }
+      setState(newState);
+      const pantries = await getPantries();
+      setState({ ...newState, pantries });
+    }
+    fetchData();
   }, []);
 
   function total() {
@@ -63,33 +94,46 @@ export default function Home () {
     return fixed(total);
   }
 
-
   return (
     <Layout>
       <Container flex={1} centered="horizontal">
+      <Row>
+        <Link to={{ screen: screens.PANTRIES}}>
+          Despensas
+        </Link>
+      </Row>
+      <Row>
+        <Link to={{ screen: screens.ARTICLES}}>
+          Artículos
+        </Link>
+      </Row>
       <Row >
         <Col>
           <Heading size="m" muted > Total contabilizado </Heading>
         </Col>
         <Col>
-          <Heading size="xl" muted >{ total() }</Heading>
+          <Heading size="l" muted >{ total() }</Heading>
         </Col>
       </Row>
-        <AddedArticlesList 
-          header={<ArticleRow>
-            <Col flex={1}>
-              <Text>Foto</Text>
-            </Col>
-            <Col flex={1}>
-              <Text>Nombre</Text>
-            </Col>
-            <Col flex={1}>
-              <Text>Precio</Text>
-            </Col>
-            <Col flex={1}>
-              <Text>Cantidad</Text>
-            </Col>
-            </ArticleRow>}
+      <ListPicker 
+        style={{zIndex: 1, paddingBottom: 16}} 
+        ref={pantryRef}
+        onChange={(value) => setPantryName(value)}
+        data={state.pantries.map(pantry => pantry.name)}>
+        <Button textProps={{ numberOfLines: 1 }} onPress={() => modalRef.current.open()}>
+            Nueva Despensa
+        </Button>
+        <Modal ref={modalRef}>
+          <PantryCreator onSubmit={async () => {
+              modalRef.current.close()
+              setState({
+                ...state,
+                pantries: await getPantries(),
+              });
+            }}/>
+        </Modal>
+      </ListPicker>
+        <AddedArticlesList
           isLoading={state.initializingList}
           data={state.articlesList}
           swipeableRightContent={() => <Text color={colors.background}>Eliminar</Text>}
@@ -99,10 +143,22 @@ export default function Home () {
           itemModifier={(id, property, value) => setState({...state, articlesList: listModifier(state.articlesList, id, property, value)})}
           footer={
             <ArticleForm
-              addArticleToList={(article) => setState({...state, articlesList: addArticleToList(article, state)})}
-              />
+              addArticleToList={(article) => 
+                setState({
+                  ...state, 
+                  articlesList: addArticleToList(article, state)
+                })
+              }/>
           }/>
-        <Button onPress={() => alert("function not implemented")} >Guardar Despensa</Button>
+        <LazyButton 
+          onPress={() => 
+            pantry.createBatch(state.pantries.find((pantry) => 
+              pantry.name === pantryRef.current.getValue()), 
+              state.articlesList
+            )}
+          >
+          Agregar provisión
+        </LazyButton>
       </Container>
     </Layout>
   );

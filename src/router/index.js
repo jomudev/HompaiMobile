@@ -4,20 +4,23 @@ import Login from '../screens/Login';
 import MainRouter from './mainRouter';
 import Auth from '../../modules/Auth';
 
+const auth = Auth.getInstance()
+
 export default function (props) {
-  const [user, setUser] = useState(Auth.currentUser);
+  const [state, setState] = useState({
+    user: auth.currentUser,
+  });
 
   useEffect(() => {
-    const subscriber = Auth.onAuthStateChanged((user) => {
-      setUser(user);
+    return auth.onAuthStateChanged(async (user) => {
+      setState({user});
     });
-    return () => subscriber;
   }, []);
 
   return (
     <NavigationContainer>
       {
-        user
+        state.user
           ? <MainRouter />
           : <Login />
       }

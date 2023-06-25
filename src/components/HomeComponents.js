@@ -1,4 +1,4 @@
-import React, { memo, useState, useRef } from 'react';
+import React, { memo, useState, useRef, useImperativeHandle, forwardRef } from 'react';
 import {
   Text, 
   TextBox, 
@@ -8,14 +8,21 @@ import {
   SwipeableListItem,
   View,
   LazyLoading,
+  Button,
+  Heading,
+  DateTimePicker
 } from './UI';
 import colors from '../../res/colors';
+import { Modal as RNModal, StyleSheet } from 'react-native';
+import PantryStore from '../../modules/PantryStore';
+const pantryStore = PantryStore.getInstance();
 
 export const ArticleRow = (props) => (
   <Row centeredAll style={{ 
     gap: 16,
     width: '100%',
-    height: 60,
+    paddingTop: 8,
+    height: 40,
     ...props.style 
   }}>
     { props.children }
@@ -24,9 +31,9 @@ export const ArticleRow = (props) => (
 export const ArticleView = (props) => (
   <View {...props} style={{ 
     borderRadius: 16,
-    backgroundColor: colors.secondary,
     height: '100%',
     width: '100%',
+    backgroundColor: colors.secondary,
     }} centered>
       {props.children}
   </View>
@@ -53,10 +60,11 @@ export const ArticleForm = (({addArticleToList}) => {
 
   return (
   <ArticleRow>
-    <Col flex={3}>
+    <Col flex={2}>
       <TextBox 
         placeholder="Nombre" 
         ref={nameRef}
+        keyboardType="default"
         onSubmitEditing={submit}
           />
     </Col>
@@ -71,7 +79,7 @@ export const ArticleForm = (({addArticleToList}) => {
     </Col>
     <Col flex={1}>
       <TextBox 
-        placeholder="Cant..." 
+        placeholder="Cantidad" 
         ref={quantityRef}
         valueType="float"
         keyboardType='number-pad'
@@ -96,20 +104,18 @@ const showInput = (inputName, state) => {
 
 export const AddedArticlesList = memo((props) => {
 
-  let nameRef = useRef(null);
-  let priceRef = useRef(null);
-  let quantityRef = useRef(null);
-
   if (props.isLoading) {
     return <LazyLoading size="large" />
   }
   
   return (
   <DataList 
+    header={props.header}
     data={props.data} 
-    render={({item}) => (
-      <ArticlesListItem 
+    render={({item, index}) => (
+      <DynamicArticlesListItem
         item={item} 
+        key={index}
         itemModifier={props.itemModifier}
         swipeableRightContent={props.swipeableRightContent}
         swipeableLeftContent={props.swipeableLeftContent}
@@ -120,12 +126,82 @@ export const AddedArticlesList = memo((props) => {
   />
 )});
 
-export const ArticlesListItem = (props)  => {
-  const { item } = props;
+export class Modal extends React.Component {
+  constructor(props) {
+    super(props);
+    this.state = {
+      visible: false
+    }
+  }
 
+  open() {
+    this.setState({ visible: true });
+  }
+  
+  close() {
+    this.setState({ visible: false });
+  }
+
+  render() {
+    return (
+      <RNModal 
+        visible={this.state.visible}
+        transparent
+        animationType='slide'
+        onRequestClose={() => this.close()}
+        >
+        <View style={styles.modalContainer}>
+          <View style={styles.modalView}>
+          {
+            this.props.children
+          }
+          </View>
+        </View>
+      </RNModal>
+    )
+  }
+}
+
+/**
+ * 
+ */
+function createPantry(pantryName) {
+  pantryStore.createPantry(pantryName);
+}
+//
+
+export const PantryCreator = (props, ref) => {
+  const inputRef = useRef();
+
+  return (
+    <View centered >
+      <Heading size="l" bold >Agrega una despensa</Heading>
+      <Row gap={16} style={{ height: 40 }}>
+        <Col flex={1}>
+          <TextBox 
+            ref={inputRef}
+            placeholder="Nombre"
+          />
+        </Col>
+        <Col flex={1}>
+          <Button onPress={() => {
+              createPantry(inputRef.current.getValue());
+              props?.onSubmit()
+            }}>
+            Crear
+          </Button>
+        </Col>
+      </Row>
+    </View>
+  );
+}
+
+export const DynamicArticlesListItem = (props)  => {
+  const { item } = props;
   const nameRef = useRef(null);
   const priceRef = useRef(null);
   const quantityRef = useRef(null);
+  const expirationDateRef = useRef(null);
 
   const [state, setState] = useState({
     showNameInput: false,
@@ -135,23 +211,25 @@ export const ArticlesListItem = (props)  => {
 
   return (
     <SwipeableListItem
-        rightContent={props.swipeableRightContent}
-        leftContent={props.swipeableLeftContent}
-        rightColor={colors.danger}
-        leftColor={colors.secondary}
-        rightPress={() => props?.swipeableRightFunction(item.id)}
-        leftPress={() => props?.swipeableLeftFunction(item.id)}
-        >
+      style={{ 
+        height: 88,
+        borderRadius: 16,
+        elevation: 16,
+        overflow: 'hidden',
+      }}
+      rightContent={props.swipeableRightContent}
+      leftContent={props.swipeableLeftContent}
+      rightColor={colors.danger}
+      leftColor={colors.secondary}
+      rightPress={() => props?.swipeableRightFunction(item.id)}
+      leftPress={() => props?.swipeableLeftFunction(item.id)}
+      >
       <ArticleRow>
-        <Col flex={1}>
-          <ArticleView>
-            <Text>Imagen</Text>
-          </ArticleView> 
-        </Col>
-        <Col flex={1}>
+        <Col flex={2}>
           {
             state.showNameInput 
               ? <TextBox 
+                  key="addedArticleNameTexBox"
                   autoFocus
                   onEndEditing={() => props.itemModifier(item.id, "name", nameRef.current.getValue())}
                   placeholder="Nombre" 
@@ -198,5 +276,30 @@ export const ArticlesListItem = (props)  => {
           }
         </Col>
     </ArticleRow>
+    <DateTimePicker 
+      label="Caducidad"
+      onChange={(value) => props.itemModifier(item.id, "expirationDate", value)}
+      ref={expirationDateRef} 
+      initialValue={item.expirationDate}
+      style={{
+        elevation: 0,
+        marginTop: 8,
+      }}/>
   </SwipeableListItem>
 )}
+
+const styles = StyleSheet.create({
+  modalView: {
+    width: '80%',
+    backgroundColor: colors.background,
+    borderRadius: 24,
+    padding: 24,
+    alignSelf: 'center',
+    elevation: 90,
+  },
+  modalContainer: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+});

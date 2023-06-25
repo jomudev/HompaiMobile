@@ -2,14 +2,10 @@ import React from 'react';
 import { ToastAndroid } from 'react-native';
 import { Layout, Container, Button, Heading } from '../components/UI';
 import Auth from '../../modules/Auth';
-
 export default function () {
-
-  console.log(Auth.currentUser);
-
   const signin = async () => {
     try {
-      await Auth.signInWithGoogle();
+      const result = await Auth.signInWithGoogle();
     } catch (err) {
       ToastAndroid.show(err, ToastAndroid.LONG);
     }

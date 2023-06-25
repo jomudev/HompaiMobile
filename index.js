@@ -7,6 +7,28 @@ GoogleSignin.configure({
 });
 
 window.fixed = (value) => isNaN(value) ? "0.00" : parseFloat(value).toFixed(2);
+window.localeDate = (date) => {
+  date = new Date(date);
+  const lang = 'es-ES';
+  let options = {
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric',
+    weekday: 'long',
+  }
+
+  return {
+    dateString: date.toLocaleDateString(lang, {
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric',
+      weekday: 'long',
+    }),
+    weekday: date.toLocaleDateString(lang, {
+      weekday: 'long'
+    }),
+  }
+}
 
 import App from './App';
 

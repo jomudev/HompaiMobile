@@ -1,39 +1,113 @@
-import { forwardRef, useRef, useState, useImperativeHandle } from 'react';
+import { forwardRef, memo, useRef, useState, useImperativeHandle } from 'react';
 import { 
   View as RNView, 
   Text as RNText, 
   Pressable, 
-  StyleSheet, 
+  StyleSheet,
   TextInput, 
-  FlatList, 
-  KeyboardAvoidingView,
+  FlatList,
   ActivityIndicator,
  } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import colors from '../../res/colors';
 import { ListItem } from '@rneui/themed';
+import { DateTimePickerAndroid } from '@react-native-community/datetimepicker';
+import {Picker} from '@react-native-picker/picker';
+import { useLinkProps } from '@react-navigation/native';
+
+export const ListPicker = forwardRef((props, ref) => {
+  const [selectedValue, setSelectedValue] = useState();
+  const pickerRef = useRef();
+
+  useImperativeHandle(ref, () => ({
+    getValue: () => selectedValue,
+    open: () => pickerRef.current.focus(),
+    close: () => pickerRef.current.blur(),
+  }));
+
+  return (
+    <Row isPressable style={{width: '100%', ...props.style, gap: 16 }} onPress={ () => pickerRef.current.focus() } >
+      <Picker
+        ref={pickerRef}
+        style={{ flex: 1 }}
+        selectedValue={selectedValue}
+        onValueChange={ (value) => {
+          setSelectedValue(value);
+          props?.onChange(value);
+        }}
+      >
+        {
+          props.data.map( (item) => <Picker.Item key={JSON.stringify(item)} label={item} value={item} /> )
+        }
+      </Picker>
+      {
+        <View flex={1}>{props.children}</View>
+      }
+    </Row>)
+});
+
+export const DateTimePicker = forwardRef((props, ref) => {
+  const [date, setDate] = useState(null);
+  function onChange(event, selectedDate) {
+    setDate(selectedDate);
+    props?.onChange(selectedDate);
+  }
+
+  function showMode(mode) {
+    DateTimePickerAndroid.open({
+      mode,
+      onChange,
+      minimumDate: mode === "date" ? new Date(Date.now()) : null,
+      value: new Date(Date.now() + 1000 * 60 * 60 * 24 ),
+    });
+  }
+
+  useImperativeHandle(ref, () => ({
+    getValue: () => date,
+  }));
+
+
+  return (
+    <Pressable style={{...styles.button, ...props.style}} onPress={() => showMode(props.mode)}>
+      <Text>{ props.label && props.label + ": " } { 
+        props.initialValue 
+        ? localeDate(props.initialValue).dateString
+        : date 
+          ? localeDate(date).dateString 
+          : "no asignada"
+         }</Text>
+    </Pressable>
+  )
+})
 
 export const SwipeableButton = (props) => {
   return (
-    <Pressable {...props} style={{...styles.swipeableButton, backgroundColor: props.color, borderRadius: 16 }}>
+    <Pressable {...props} style={{...styles.swipeableButton, backgroundColor: props.color}}>
       { props.children }
     </Pressable>
   );
 }
 
 export const LazyLoading = (props) => {
+  return <ActivityIndicator color={colors.danger} size="small"  />
+}
+
+export const PressableLink = ({to, action, children, ...rest}) => {
+  const { onPress, ...props} = useLinkProps({ to, action });
+
   return (
-    <View style={styles.lazyLoadingContainer}>
-      <ActivityIndicator color={colors.danger} size={props.size}  />
-    </View>
+    <Pressable {...props} {...rest} onPress={onPress}>
+      { children }
+    </Pressable>
   )
 }
 
 export const SwipeableListItem = (props) => {
   return (
     <ListItem.Swipeable
-      style={{height: 60, ...props.style}}
-      containerStyle={{padding: 0, alignItems: 'center', justifyContent: 'center', height: '100%'}}
+      {...props}
+      style={props.style}
+      containerStyle={{padding: 0, alignItems: 'center', justifyContent: 'center', height: '100%', ...props.containerStyle}}
       rightContent={(reset) => <SwipeableButton color={props.rightColor} onPress={() => {
           reset();
           props?.rightPress();
@@ -48,7 +122,7 @@ export const SwipeableListItem = (props) => {
           {props.leftContent}
         </SwipeableButton>
       }>
-      <ListItem.Content>
+      <ListItem.Content style={{flex:1}}>
         { props.children }
       </ListItem.Content>
     </ListItem.Swipeable>
@@ -70,9 +144,8 @@ export const View = (props) => {
       false: {},
     }
     const Component = (elementProps) => props.isPressable ? 
-      <Pressable {...elementProps}>{elementProps.children}</Pressable> :
-      <RNView {...elementProps}>{elementProps.children}</RNView>
-  
+      <Pressable {...elementProps}>{elementProps.children}</Pressable> 
+      : <RNView {...elementProps}>{elementProps.children}</RNView>
   return (
     <Component {...props} style={{
       ...props.style,
@@ -92,9 +165,20 @@ export const Layout = (props) => {
   );
 };
 
+export const MinimalTextBox = forwardRef((props, ref) => <TextInput {...props} style={styles.minimalTextBox} ref={ref} />)
+
 export const Row = (props) => {
   return (
-    <View centered={props.centeredAll || "horizontal"} style={{ flexDirection: 'row', ...props.style, ...props.flex && { flex: props.flex } }}>
+    <View 
+      isPressable={props.isPressable} 
+      onPress={props.onPress} 
+      centered={props.centeredAll || "horizontal"} 
+      style={{ 
+        flexDirection: 'row', 
+        ...props.style, 
+        ...props.flex && { flex: props.flex },
+        ...props.gap && { gap: props.gap },
+        }}>
       { props.children }
     </View>
   );
@@ -102,7 +186,7 @@ export const Row = (props) => {
 
 export const Col = (props) => {
   return (
-    <View centered={props.centeredAll || "vertical"} style={{ flexDirection: 'column', ...props.style, ...props.flex && { flex: props.flex }  }}>
+    <View isPressable={props.isPressable} onPress={props.onPress} centered={props.centeredAll || "vertical"} style={{ flexDirection: 'column', ...props.style, ...props.flex && { flex: props.flex }  }}>
       { props.children }
     </View>
   );
@@ -122,12 +206,36 @@ export const Container = (props)  => {
 
 export const Button = (props) => {
   return (
-    <Pressable style={{...styles.button}} onPress={props.onPress} >
-      <Text style={{...styles.buttonText, ...props.textStyle}} color={props.textColor}>
+    <Pressable style={{...styles.button, ...props.style}} onPress={props.onPress} >
+      <Text {...props.textProps} style={{...styles.buttonText, ...props.textProps?.style}} color={props.textColor}>
         { props.children }
       </Text>
     </Pressable>
   );
+}
+
+export const LazyButton = (props) => {
+  const [loading, setLoading] = useState(false);
+
+  const handlePress = async () => {
+    setLoading(true);
+    await props.onPress()
+    setLoading(false);
+  }
+
+  return (
+    <Pressable style={{...styles.button}} onPress={handlePress}>
+      {
+        loading ? 
+          <LazyLoading />
+          : (
+            <Text style={{...styles.buttonText, ...props.textStyle}} color={props.textColor}>
+              { props.children }
+            </Text>
+          )
+      }
+    </Pressable>
+  )
 }
 
 export const textSizes = (size) => {
@@ -144,13 +252,17 @@ export const textSizes = (size) => {
 
 export const Text = (props) => {
   return (
-    <RNText style={{ 
+    <RNText
+      style={{ 
       ...props.centered ? { textAlign: 'center' } : {},
       ...props.centeredVertical ? { textAlignVertical: 'center' } : {},
         color: props.muted ? colors.textMuted : (colors[props.color] || props.color) || colors.text, 
       ...props.bold ? { fontWeight: 'bold' } : {},
+      ...props.size && { fontSize: textSizes(props.size) }
         }} 
-      {...props} >
+      {...props}
+      numberOfLines={ props.numberOfLines || 1 }
+       >
       { props.children }
     </RNText>
   );
@@ -167,8 +279,8 @@ export const Heading = (props) => {
 export const TextBox = forwardRef((props, ref) => {
   const [value, setValue] = useState("");
   let inputRef = useRef(null);
-
-  useImperativeHandle(ref, () => ({
+  useImperativeHandle(ref, () => {
+    return ({
     getValue: () => {
       let float = fixed(value);
       float = isNaN(float) ? fixed(0) : float;
@@ -182,29 +294,30 @@ export const TextBox = forwardRef((props, ref) => {
     },
     clear: () => inputRef.current.clear(),
     focus: () => inputRef.current.focus(),
-  }));
+  })});
 
   return (
-    <KeyboardAvoidingView style={styles.inputTextContainer}>
       <TextInput
         {...props}
         onChangeText={setValue}
         ref={inputRef}
         defaultValue={props.defaultValue}
         value={value}
-        style={{...styles.inputText, fontSize: props.textSize || 12}}
+        style={{...styles.minimalTextBox, fontSize: props.textSize || 12}}
         />
-    </KeyboardAvoidingView>
   )
 })
 
 export const DataList = (props) => {
   return <FlatList 
+    {...props}
+    keyboardDismissMode='none'
+    keyboardShouldPersistTaps='handled'
     data={props.data}
     style={styles.flatList}
     contentContainerStyle={styles.flatListContainer}
-    keyExtractor={(item) => item.id}
     renderItem={props.render}
+    ListHeaderComponent={props.header}
     ListFooterComponent={props.footer}
   />
 }
@@ -212,7 +325,7 @@ export const DataList = (props) => {
 export const styles = StyleSheet.create({
   layoutView: {
     flex: 1,
-    padding: 16,
+    paddingHorizontal: 16,
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: colors.background,
@@ -228,12 +341,12 @@ export const styles = StyleSheet.create({
     flex: 1,
   },
   button: {
-    paddingVertical: 18,
+    paddingVertical: 8,
     width: '100%',
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: colors.primary,
-    elevation: 16,
+    elevation: 32,
     borderRadius: 16,
   },
   buttonText: {
@@ -241,31 +354,32 @@ export const styles = StyleSheet.create({
     fontSize: 14,
     color: colors.text,
   },
-  inputTextContainer: {
+  minimalTextBox: {
+    height: '100%',
     borderRadius: 16,
-    backgroundColor: colors.secondary,
-  },
-  inputText: {
-    width: '90%',
     textAlign: 'center',
-    paddingVertical: 16,
+    backgroundColor: colors.secondary,
   },
   flatList: {
     width: '100%',
+    borderRadius: 16,
   },
   flatListContainer: {
     width: '100%',
+    paddingHorizontal: 16,
+    paddingTop: 16,
+    borderRadius: 16,
     gap: 16,
   },
   swipeableButton: {
-    bordeRadius: 16,
+    borderRadius: 16,
     alignItems:'center',
     justifyContent: 'center',
     minHeight: '100%',
   },
   lazyLoadingContainer: {
-    padding: 18,
-    borderRadius: 16,
+    padding: 32,
+    borderRadius: 24,
     elevation: 16,
     margin: 24,
     backgroundColor: colors.secondary,
