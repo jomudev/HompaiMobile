@@ -3,7 +3,7 @@ import { ToastAndroid } from 'react-native';
 const auth = Auth.getInstance();
 export default class Axion {
   constructor() {
-    this.baseURL = "http://192.168.0.11:5000";
+    this.baseURL = "http://192.168.0.12:5000";
     this.headers = {
       'Content-Type': 'application/json',
       'Authorization': auth.currentUser.uid,

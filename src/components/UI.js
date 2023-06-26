@@ -7,6 +7,8 @@ import {
   TextInput, 
   FlatList,
   ActivityIndicator,
+  ScrollView,
+  KeyboardAvoidingView,
  } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import colors from '../../res/colors';
@@ -14,6 +16,7 @@ import { ListItem } from '@rneui/themed';
 import { DateTimePickerAndroid } from '@react-native-community/datetimepicker';
 import {Picker} from '@react-native-picker/picker';
 import { useLinkProps } from '@react-navigation/native';
+import sizes from '../../res/sizes';
 
 export const ListPicker = forwardRef((props, ref) => {
   const [selectedValue, setSelectedValue] = useState();
@@ -106,8 +109,8 @@ export const SwipeableListItem = (props) => {
   return (
     <ListItem.Swipeable
       {...props}
-      style={props.style}
-      containerStyle={{padding: 0, alignItems: 'center', justifyContent: 'center', height: '100%', ...props.containerStyle}}
+      style={{borderRadius: sizes.m, ...props.style}}
+      containerStyle={{padding: 0, alignItems: 'center', borderRadius: sizes.m, justifyContent: 'center', height: '100%', ...props.containerStyle}}
       rightContent={(reset) => <SwipeableButton color={props.rightColor} onPress={() => {
           reset();
           props?.rightPress();
@@ -224,7 +227,7 @@ export const LazyButton = (props) => {
   }
 
   return (
-    <Pressable style={{...styles.button}} onPress={handlePress}>
+    <Pressable style={{...styles.button, ...props.style}} onPress={handlePress}>
       {
         loading ? 
           <LazyLoading />
@@ -301,7 +304,6 @@ export const TextBox = forwardRef((props, ref) => {
         {...props}
         onChangeText={setValue}
         ref={inputRef}
-        defaultValue={props.defaultValue}
         value={value}
         style={{...styles.minimalTextBox, fontSize: props.textSize || 12}}
         />
@@ -309,10 +311,25 @@ export const TextBox = forwardRef((props, ref) => {
 })
 
 export const DataList = (props) => {
+
+  return <View centered style={{ flex: 1, flexDirection: 'column', width: '100%' }}>
+          <View>
+            { props?.header }
+          </View>
+          <ScrollView contentContainerStyle={{ flex: 1, alignItems: 'center' }} style={{ width: '100%' }}>
+            { props.data.map((item, index) => (
+              <View style={{ width: '90%', paddingVertical: sizes.s, borderRadius: sizes.m }} key={item.id}>
+                { props.render({ item, index }) }
+              </View>
+              ))}
+          </ScrollView>
+          <View>
+            { props?.footer }
+          </View>
+        </View>
+
   return <FlatList 
     {...props}
-    keyboardDismissMode='none'
-    keyboardShouldPersistTaps='handled'
     data={props.data}
     style={styles.flatList}
     contentContainerStyle={styles.flatListContainer}
@@ -325,7 +342,6 @@ export const DataList = (props) => {
 export const styles = StyleSheet.create({
   layoutView: {
     flex: 1,
-    paddingHorizontal: 16,
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: colors.background,
@@ -335,7 +351,8 @@ export const styles = StyleSheet.create({
   },
   container: {
     width: '100%',
-    paddingVertical: 24,
+    paddingHorizontal: sizes.m,
+    paddingVertical: sizes.xl,
   },
   containerFluid: {
     flex: 1,
@@ -346,8 +363,8 @@ export const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: colors.primary,
-    elevation: 32,
-    borderRadius: 16,
+    elevation: sizes.xl,
+    borderRadius: sizes.m,
   },
   buttonText: {
     fontWeight: 'bold',
@@ -356,34 +373,25 @@ export const styles = StyleSheet.create({
   },
   minimalTextBox: {
     height: '100%',
-    borderRadius: 16,
+    borderRadius: sizes.m,
     textAlign: 'center',
     backgroundColor: colors.secondary,
   },
   flatList: {
     width: '100%',
-    borderRadius: 16,
+    borderRadius: sizes.m,
   },
   flatListContainer: {
-    width: '100%',
-    paddingHorizontal: 16,
-    paddingTop: 16,
-    borderRadius: 16,
-    gap: 16,
+    flex: 1,
+    paddingHorizontal: sizes.m,
+    paddingTop: sizes.m,
+    borderRadius: sizes.m,
+    gap: sizes.m,
   },
   swipeableButton: {
-    borderRadius: 16,
+    borderRadius: sizes.m,
     alignItems:'center',
     justifyContent: 'center',
     minHeight: '100%',
   },
-  lazyLoadingContainer: {
-    padding: 32,
-    borderRadius: 24,
-    elevation: 16,
-    margin: 24,
-    backgroundColor: colors.secondary,
-    alignItems: 'center',
-    justifyContent: 'center',
-  }
 });

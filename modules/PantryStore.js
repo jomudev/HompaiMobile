@@ -1,4 +1,6 @@
 import Axion from './Axion';
+import Storage from './Storage';
+const storage = Storage.getInstance();
 const axion = Axion.getInstance();
 export default class PantryStore {
   static instance = null;
@@ -18,7 +20,14 @@ export default class PantryStore {
   }
 
   async getPantries() {
-    return await axion.get("/articles/pantries") || [];
+    try {
+      const pantries = await axion.get("/articles/pantries") || [];
+      storage.store("pantries", pantries);
+      return pantries;
+    } catch(err) {
+      console.error(err);
+      return storage.get("pantries") || [];
+    }
   }
 
   async createPantry(pantryName) {

@@ -15,14 +15,14 @@ import {
 import colors from '../../res/colors';
 import { Modal as RNModal, StyleSheet } from 'react-native';
 import PantryStore from '../../modules/PantryStore';
+import sizes from '../../res/sizes';
 const pantryStore = PantryStore.getInstance();
 
 export const ArticleRow = (props) => (
   <Row centeredAll style={{ 
-    gap: 16,
+    gap: sizes.s,
     width: '100%',
-    paddingTop: 8,
-    height: 40,
+    flex: 1,
     ...props.style 
   }}>
     { props.children }
@@ -39,7 +39,7 @@ export const ArticleView = (props) => (
   </View>
 );
 
-export const ArticleForm = (({addArticleToList}) => {
+export const ArticleForm = (({addArticleToList, ...props}) => {
   let nameRef = useRef(null);
   let priceRef = useRef(null);
   let quantityRef = useRef(null);
@@ -59,34 +59,36 @@ export const ArticleForm = (({addArticleToList}) => {
   }
 
   return (
-  <ArticleRow>
-    <Col flex={2}>
-      <TextBox 
-        placeholder="Nombre" 
-        ref={nameRef}
-        keyboardType="default"
-        onSubmitEditing={submit}
+  <View style={{ height: 80, width: '100%', ...props.style }}>
+    <ArticleRow>
+      <Col flex={2}>
+        <TextBox 
+          placeholder="Nombre" 
+          ref={nameRef}
+          keyboardType="default"
+          onSubmitEditing={submit}
+            />
+      </Col>
+      <Col flex={1}>
+        <TextBox 
+          placeholder="Precio" 
+          ref={priceRef}
+          valueType="float"
+          keyboardType='number-pad'
+          onSubmitEditing={submit}
+            />
+      </Col>
+      <Col flex={1}>
+        <TextBox 
+          placeholder="Cantidad" 
+          ref={quantityRef}
+          valueType="float"
+          keyboardType='number-pad'
+          onSubmitEditing={submit}
           />
-    </Col>
-    <Col flex={1}>
-      <TextBox 
-        placeholder="Precio" 
-        ref={priceRef}
-        valueType="float"
-        keyboardType='number-pad'
-        onSubmitEditing={submit}
-          />
-    </Col>
-    <Col flex={1}>
-      <TextBox 
-        placeholder="Cantidad" 
-        ref={quantityRef}
-        valueType="float"
-        keyboardType='number-pad'
-        onSubmitEditing={submit}
-        />
-    </Col>
-  </ArticleRow>
+      </Col>
+    </ArticleRow>
+  </View>
 )});
 
 /**
@@ -196,26 +198,34 @@ export const PantryCreator = (props, ref) => {
   );
 }
 
-export const DynamicArticlesListItem = (props)  => {
-  const { item } = props;
+const ArticlesListItemInput = forwardRef(({item, ...props}, ref) => {
+  const [showing, setShowing] = useState(false);
+  return (
+    <Col>
+      {
+        showing 
+          ? <TextBox { ...props } ref={ref}/>
+          : <View isPressable centered onPress={ () => setShowing(true) } >
+              <Text bold>{props.defaultValue}</Text>
+            </View>
+      }
+    </Col>
+  );
+})
+
+export const DynamicArticlesListItem = ({item, ...props})  => {
   const nameRef = useRef(null);
   const priceRef = useRef(null);
   const quantityRef = useRef(null);
   const expirationDateRef = useRef(null);
 
-  const [state, setState] = useState({
-    showNameInput: false,
-    showPriceInput: false,
-    showQuantityInput: false,
-  });
-
   return (
     <SwipeableListItem
       style={{ 
         height: 88,
-        borderRadius: 16,
-        elevation: 16,
-        overflow: 'hidden',
+        borderRadius: sizes.m,
+        padding: sizes.s,
+        backgroundColor: colors.background,
       }}
       rightContent={props.swipeableRightContent}
       leftContent={props.swipeableLeftContent}
@@ -226,65 +236,42 @@ export const DynamicArticlesListItem = (props)  => {
       >
       <ArticleRow>
         <Col flex={2}>
-          {
-            state.showNameInput 
-              ? <TextBox 
-                  key="addedArticleNameTexBox"
-                  autoFocus
-                  onEndEditing={() => props.itemModifier(item.id, "name", nameRef.current.getValue())}
-                  placeholder="Nombre" 
-                  defaultValue={item.name}
-                  ref={nameRef}
-                  />
-              : <View isPressable centered onPress={() => setState(showInput("Name", state))}>
-                  <Text bold>{item.name}</Text>
-                </View>
-          }
+          <ArticlesListItemInput
+            autoFocus
+            onEndEditing={ () => props.itemModifier(item.id, "name", nameRef.current.getValue()) }
+            placeholder="Nombre"
+            defaultValue={item.name}
+            ref={nameRef}
+           />
         </Col>
+          <ArticlesListItemInput
+            autoFocus
+            onEndEditing={ () => props.itemModifier(item.id, "price", priceRef.current.getValue()) }
+            placeholder="Precio"
+            defaultValue={item.price}
+            ref={priceRef}
+           />
         <Col flex={1}>
-          {
-            state.showPriceInput 
-              ? <TextBox 
-                  autoFocus
-                  placeholder="Precio" 
-                  ref={priceRef}
-                  valueType="float"
-                  onEndEditing={() => props.itemModifier(item.id, "price", priceRef.current.getValue())}
-                  keyboardType='number-pad'
-                  defaultValue={item.price}
-                  />
-              : <ArticleView isPressable onPress={() => setState(showInput("Price", state))}>
-                  <Text >{item.price}</Text>
-                </ArticleView>
-          }
-        </Col>
-        <Col flex={1}>
-          {
-            state.showQuantityInput ? 
-              <TextBox 
-                autoFocus
-                placeholder="Cant..." 
-                valueType="float"
-                ref={quantityRef}
-                onEndEditing={() => props.itemModifier(item.id, "quantity", quantityRef.current.getValue())}
-                keyboardType='number-pad'
-                defaultValue={item.quantity}
-                />  
-              : <ArticleView isPressable onPress={() => setState(showInput("Quantity", state))}>
-                  <Text >{item.quantity}</Text>
-                </ArticleView>
-          }
+          <ArticlesListItemInput
+            autoFocus
+            onEndEditing={ () => props.itemModifier(item.id, "quantity", quantityRef.current.getValue()) }
+            placeholder="Cantidad"
+            defaultValue={item.price}
+            ref={quantityRef}
+           />
         </Col>
     </ArticleRow>
-    <DateTimePicker 
-      label="Caducidad"
-      onChange={(value) => props.itemModifier(item.id, "expirationDate", value)}
-      ref={expirationDateRef} 
-      initialValue={item.expirationDate}
-      style={{
-        elevation: 0,
-        marginTop: 8,
-      }}/>
+    <ArticleRow>
+      <DateTimePicker 
+        label="Caducidad"
+        onChange={(value) => props.itemModifier(item.id, "expirationDate", value)}
+        ref={expirationDateRef} 
+        initialValue={item.expirationDate}
+        style={{
+          elevation: 0,
+          padding: 0,
+        }}/>
+    </ArticleRow>
   </SwipeableListItem>
 )}
 

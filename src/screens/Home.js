@@ -4,14 +4,14 @@ import {
   Container, 
   Heading, 
   LazyButton, 
+  View,
   Button,
   Row, 
   Text,
   Col,
   ListPicker,
 } from '../components/UI';
-import { 
-  AddPantry,
+import {
   AddedArticlesList,
   ArticleForm,
   Modal,
@@ -22,6 +22,8 @@ import PantryStore from '../../modules/PantryStore';
 import colors from '../../res/colors';
 import screens from '../../res/screens';
 import { Link } from '@react-navigation/native';
+import sizes from '../../res/sizes';
+import { KeyboardAwareScrollView } from 'react-native-keyboard-aware-scroll-view'
 
 const storage = Storage.getInstance();
 const pantry = PantryStore.getInstance();
@@ -96,43 +98,37 @@ export default function Home () {
 
   return (
     <Layout>
-      <Container flex={1} centered="horizontal">
-      <Row>
-        <Link to={{ screen: screens.PANTRIES}}>
-          Despensas
-        </Link>
-      </Row>
-      <Row>
-        <Link to={{ screen: screens.ARTICLES}}>
-          Artículos
-        </Link>
-      </Row>
-      <Row >
-        <Col>
-          <Heading size="m" muted > Total contabilizado </Heading>
-        </Col>
-        <Col>
-          <Heading size="l" muted >{ total() }</Heading>
-        </Col>
-      </Row>
-      <ListPicker 
-        style={{zIndex: 1, paddingBottom: 16}} 
-        ref={pantryRef}
-        onChange={(value) => setPantryName(value)}
-        data={state.pantries.map(pantry => pantry.name)}>
-        <Button textProps={{ numberOfLines: 1 }} onPress={() => modalRef.current.open()}>
-            Nueva Despensa
-        </Button>
-        <Modal ref={modalRef}>
-          <PantryCreator onSubmit={async () => {
-              modalRef.current.close()
-              setState({
-                ...state,
-                pantries: await getPantries(),
-              });
-            }}/>
-        </Modal>
-      </ListPicker>
+    <KeyboardAwareScrollView 
+      style={{ width: '100%' }}
+      contentContainerStyle={{width: '100%'}}>
+      <Container centered style={{ paddingVertical: 0, flex: 1 }} >
+        <Row >
+          <Col>
+            <Heading size="m" muted > Total contabilizado </Heading>
+          </Col>
+          <Col>
+            <Heading size="l" muted >{ total() }</Heading>
+          </Col>
+        </Row>
+        <ListPicker 
+          style={{zIndex: 1, paddingBottom: 16}} 
+          ref={pantryRef}
+          onChange={(value) => setPantryName(value)}
+          data={state.pantries.map(pantry => pantry.name)}>
+          <Button textProps={{ numberOfLines: 1 }} onPress={() => modalRef.current.open()}>
+              Nueva Despensa
+          </Button>
+          <Modal ref={modalRef}>
+            <PantryCreator onSubmit={async () => {
+                modalRef.current.close()
+                setState({
+                  ...state,
+                  pantries: await getPantries(),
+                });
+              }}/>
+          </Modal>
+        </ListPicker>
+      </Container>
         <AddedArticlesList
           isLoading={state.initializingList}
           data={state.articlesList}
@@ -141,25 +137,34 @@ export default function Home () {
           swipeableRightFunction={(id) => setState({...state, articlesList: deleteArticleFromList(id, state.articlesList)})} 
           swipeableLeftFunction={() => alert("function not implemented")}
           itemModifier={(id, property, value) => setState({...state, articlesList: listModifier(state.articlesList, id, property, value)})}
+          header={
+            <View  style={{ width: '90%', alignItems: 'center' }}>
+                <ArticleForm
+                  style={{ height: 40, backgroundColor: colors.background, borderRadius: sizes.m, padding: sizes.xs }}
+                  addArticleToList={(article) => 
+                    setState({
+                      ...state, 
+                      articlesList: addArticleToList(article, state)
+                    })
+                  }/>
+            </View>
+          }
           footer={
-            <ArticleForm
-              addArticleToList={(article) => 
-                setState({
-                  ...state, 
-                  articlesList: addArticleToList(article, state)
-                })
-              }/>
-          }/>
-        <LazyButton 
-          onPress={() => 
-            pantry.createBatch(state.pantries.find((pantry) => 
-              pantry.name === pantryRef.current.getValue()), 
-              state.articlesList
-            )}
-          >
-          Agregar provisión
-        </LazyButton>
-      </Container>
+            state.articlesList.length 
+            ? <LazyButton
+                style={{ padding: sizes.m, marginBottom: sizes.s }}
+                onPress={() => 
+                  pantry.createBatch(state.pantries.find((pantry) => 
+                    pantry.name === pantryRef.current.getValue()), 
+                    state.articlesList
+                  )}
+                >
+                Agregar provisión
+              </LazyButton>
+            : null
+                  }
+            />
+      </KeyboardAwareScrollView>
     </Layout>
   );
 };
