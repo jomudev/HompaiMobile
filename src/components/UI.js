@@ -341,6 +341,7 @@ export const SectionsList = (props) => {
 export const DataList = (props) => {
   return (
     <FlatList 
+      initialNumToRender={10}
       ListHeaderComponent={props?.header} 
       inverted={props.inverted}
       data={props.data}

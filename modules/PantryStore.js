@@ -1,3 +1,4 @@
+import Article from '../src/objects/Article';
 import Axion from './Axion';
 import Storage from './Storage';
 const storage = Storage.getInstance();
@@ -47,7 +48,9 @@ export default class PantryStore {
   }
 
   async getArticles() {
-    return await axion.get("/articles") || [];
+    let articles = await axion.get("/articles") || [];
+    articles = articles.map(article => new Article(article.id, article.name, article.price, article.quantity));
+    return articles;
   }
 
   async getBatch(batchId) {

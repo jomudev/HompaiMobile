@@ -13,12 +13,13 @@ export default class ArticleList extends List {
 
   async init() {
     const list = await this.getArticles();
-    this.total = this.getTotal(list);
     super.setList = list;
+    this.total = this.getTotal();
   }
 
-  getTotal(articlesList) {
-    let total = articlesList.map((article) => article.price * article.quantity);
+  getTotal() {
+    console.log(this.list);
+    let total = this.list.map((article) => article.price * article.quantity);
     total = total.length && total.reduce((acc, val) => acc + val);
     return total;
   }
@@ -47,17 +48,11 @@ export default class ArticleList extends List {
     this.saveLocal();
   }
 
-  modify(id, property, value){
+  modify(id, property, value) {
     if (typeof value === "string" && value.trim() === "") {
       return null;
     }
-    console.log(super.list);
-    let article = this.list.find((article) => article.id === id);
-    article = {
-      ...article,
-      [property]: value,
-    };
-    super.modify(id, article);
+    super.modify(id, property, value);
     this.saveLocal();
   }
 

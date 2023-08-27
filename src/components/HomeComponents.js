@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, forwardRef } from 'react';
+import React, { Component, useState, useEffect, useRef, forwardRef } from 'react';
 import {
   Text, 
   TextBox, 
@@ -20,6 +20,7 @@ import { Modal as RNModal, StyleSheet } from 'react-native';
 import sizes from '../../res/sizes';
 import HomeLogic from '../screens/screensLogic/HomeLogic/Home.logic';
 import PantryStore from '../../modules/PantryStore';
+import Article from '../objects/Article';
 const pantryStore = PantryStore.getInstance();
 const logic = new HomeLogic();
 
@@ -50,12 +51,8 @@ export const ArticleForm = (props) => {
   let quantityRef = useRef(null);
 
   const submit = () => {
-    const article = {
-      id: Math.random() * 1e9,
-      name: nameRef.current?.getValue(),
-      price: priceRef.current?.getValue(),
-      quantity: quantityRef.current?.getValue() === '0.00' ? fixed(1) : quantityRef.current?.getValue(),
-    };
+    
+    const article = new Article(Math.random() * 1e9, nameRef.current?.getValue(), priceRef.current?.getValue(), quantityRef.current?.getValue())
     logic.articlesList.add(article);
     nameRef.current.clear();
     priceRef.current.clear();
@@ -129,12 +126,11 @@ export const ArticlesList = () => {
         setArticles(logic.articlesList.list);
       }
     });
-    return subscriber;
+    return subscriber();
   }, [articles]);
 
   return (
-    <DataList 
-      inverted
+    <DataList
       data={articles} 
       render={({item, index}) => (
         <DynamicArticlesListItem
@@ -143,8 +139,7 @@ export const ArticlesList = () => {
           swipeableLeftContent={() => <Text>ℹ️</Text>}
           swipeableRightContent={() => <Text>🗑️</Text>}
           swipeableLeftFunction={() => Alert.alert("Función no implementada", "Muy pronto estaremos implementando esta función")}
-          swipeableRightFunction={(id) => logic.articlesList.remove(id)} 
-          itemModifier={logic.articlesList.modify}
+          swipeableRightFunction={(id) => logic.articlesList.remove(id)}
         />)}
     />)
 }
@@ -231,67 +226,50 @@ export const ArticlesFooter = () => {
 
   return listIsReady && (
     <View>
-      <Button onPress={() => setUserWantView(!userWantView)} style={{ 
-                position: "absolute",
-                bottom: 80,
-                right: sizes.s,
-                width: '30%',
-                height: 50,
-                backgroundColor: colors.primary,
-                padding: sizes.m, 
-              }}>
-        opciones...
-      </Button>
-      {
-        userWantView && (
-          <View style={{backgroundColor: "none"}}>
-            <Button 
-              style={{
-                position: "absolute",
-                bottom: 200,
-                right: sizes.s,
-                width: '30%',
-                backgroundColor: colors.secondary,
-                padding: sizes.m, 
-              }}
-              onPress={() => {
-                Alert.alert("Vaciar", "Seguro que quieres vaciar lista?", [
-                  {
-                    text: "No",
-                    onPress: () => {}
-                  },
-                  {
-                    text: "Sí",
-                    onPress: () => logic.articlesList.clear()
-                  }
-                ])
-              }}>
-              🧹 Limpiar Lista
-            </Button>
-            <LazyButton
-              style={{ 
-                position: "absolute",
-                bottom: 140,
-                right: sizes.s,
-                width: '50%',
-                backgroundColor: colors.warning,
-                padding: sizes.m, 
-              }}
-              textStyle={{
-                color: 'white',
-              }}
-              onPress={async () => {
-                if (!listIsReady) {
-                  return;
+        <View style={{backgroundColor: "none"}}>
+          <Button 
+            style={{
+              marginTop: sizes.m,
+              width: '50%',
+              alignSelf: 'center',
+              backgroundColor: colors.secondary,
+              padding: sizes.m, 
+            }}
+            onPress={() => {
+              Alert.alert("Vaciar", "Seguro que quieres vaciar lista?", [
+                {
+                  text: "No",
+                  onPress: () => {}
+                },
+                {
+                  text: "Sí",
+                  onPress: () => logic.articlesList.clear()
                 }
-                await logic.createBatch(logic.selectedPantry);
-              }}
-              >
-              📃 Guardar Lista
-            </LazyButton>
-          </View>
-        )
-      }
+              ])
+            }}>
+            🧹 Limpiar Lista
+          </Button>
+          <LazyButton
+            style={{
+              marginTop: sizes.m,
+              width: '50%',
+              alignSelf: 'center',
+              backgroundColor: colors.warning,
+              padding: sizes.m, 
+            }}
+            textStyle={{
+              color: 'white',
+            }}
+            onPress={async () => {
+              if (!listIsReady) {
+                return;
+              }
+              await logic.createBatch(logic.selectedPantry);
+            }}
+            >
+            📃 Guardar Lista
+          </LazyButton>
+        </View>
     </View>)
 }
 
@@ -378,7 +356,7 @@ const ArticlesListItemInput = forwardRef(({item, ...props}, ref) => {
           ? <TextBox {...props} onBlur={() => {
               props?.onBlur();
               setShowing(false);
-            }} ref={ref} defaultValue={props?.defaultValue} style={{flex: 1}} />
+            }} ref={ref} value={props?.defaultValue} style={{flex: 1}} />
           : <ArticleView style={{ flex: 1 }} isPressable centered onPress={ () => setShowing(true) } >
               <Text bold>{props.defaultValue}</Text>
             </ArticleView>
@@ -387,16 +365,25 @@ const ArticlesListItemInput = forwardRef(({item, ...props}, ref) => {
   );
 })
 
-export const DynamicArticlesListItem = ({item, ...props})  => {
-  const [data, setData] = useState(item);
-  const nameRef = useRef(null);
-  const priceRef = useRef(null);
-  const quantityRef = useRef(null);
-  const expirationDateRef = useRef(null);
-  const [removed, setRemoved] = useState(false);
+function articleModifier (id, property, value) {
+  return logic.articlesList.modify(id, property, value);
+}
 
-  useEffect(() => {
-    const subscriber = logic.articlesList.addObserver(() => {
+export class DynamicArticlesListItem extends Component  {
+  constructor({item, ...props}) {
+    super(props);
+    this.state = {
+      ...item,
+      visible: true,
+    }
+    this.nameRef = useRef(null);
+    this.priceRef = useRef(null);
+    this.quantityRef = useRef(null);
+    this.unsubscribe = null;
+  }
+
+  subscribe() {
+    return logic.articlesList.addObserver(() => {
       const change = logic.articlesList.lastChange;
       if (change === null) {
         return;
@@ -405,85 +392,105 @@ export const DynamicArticlesListItem = ({item, ...props})  => {
         if (change.data.id !== data.id) {
           return;
         }
-        setData(change.data);
+        this.setState({
+          ...this.state,
+          ...data,
+        })
       } 
       if (change.type === "remove") {
         if (change.data !== data.id) {
           return;
         }
-        setRemoved(true);
+        this.setState({
+          ...this.state,
+          visible: false,
+        })
       }
     });
+  }
 
-    return subscriber;
-  }, []);
+  componentDidMount() {
+    this.unsubscribe = this.subscribe();
+  }
 
-  return !removed && (
-    <SwipeableListItem
-      style={{ 
-        height: 50,
-        borderRadius: sizes.m,
-        padding: sizes.s,
-        backgroundColor: colors.background,
-      }}
-      rightContent={props.swipeableRightContent}
-      leftContent={props.swipeableLeftContent}
-      rightColor={colors.danger}
-      leftColor={colors.secondary}
-      rightPress={() => props?.swipeableRightFunction(data.id)}
-      leftPress={() => props?.swipeableLeftFunction(data.id)}
-      >
-      <ArticleRow>
-        <Col flex={2}>
-          <ArticlesListItemInput
-            autoFocus
-            onBlur={() => props.itemModifier(data.id, "name", nameRef.current.getValue())}
-            placeholder="Nombre"
-            defaultValue={data.name}
-            ref={nameRef}
-           />
-        </Col>
-        <Col flex={1}>
-          <ArticlesListItemInput
-            autoFocus
-            onBlur={ () => props.itemModifier(data.id, "price", priceRef.current.getValue()) }
-            placeholder="💵"
-            defaultValue={fixed(data.price)}
-            ref={priceRef}
-           />
-        </Col>
-        <Col flex={1}>
-          <ArticlesListItemInput
-            autoFocus
-            onBlur={ () => props.itemModifier(data.id, "quantity", quantityRef.current.getValue()) }
-            placeholder="5️⃣"
-            defaultValue={fixed(data.quantity)}
-            ref={quantityRef}
-           />
-        </Col>
-        <Col flex={1}>
-          <ArticleView>
-            <Text muted >{ fixed(data.quantity * data.price) }</Text>
-          </ArticleView>
-        </Col>
-    </ArticleRow>
-    {
-      /**
-      <ArticleRow>
-        <DateTimePicker 
-          label="Caducidad"
-          onChange={(value) => props.itemModifier(item.id, "expirationDate", value)}
-          ref={expirationDateRef} 
-          initialValue={item.expirationDate}
-          style={{
-            elevation: 0,
-            padding: 0,
-          }}/>
-      </ArticleRow>
-       */
+  componentWillUnmount() {
+    this.unsubscribe();
+  }
+
+  render() {
+    const props = this.props;
+    if (!this.state.visible) {
+      return null;
     }
-  </SwipeableListItem>
-)}
+    return (
+      <SwipeableListItem
+        style={{ 
+          height: 50,
+          borderRadius: sizes.m,
+          padding: sizes.s,
+          backgroundColor: colors.background,
+        }}
+        rightContent={props.swipeableRightContent}
+        leftContent={props.swipeableLeftContent}
+        rightColor={colors.danger}
+        leftColor={colors.secondary}
+        rightPress={() => props?.swipeableRightFunction(this.state.id)}
+        leftPress={() => props?.swipeableLeftFunction(this.state.id)}
+        >
+        <ArticleRow>
+          <Col flex={2}>
+            <ArticlesListItemInput
+              autoFocus
+              onBlur={() => articleModifier(this.state.id, "name", this.nameRef.current.getValue())}
+              placeholder="Nombre"
+              defaultValue={data.name}
+              ref={this.nameRef}
+             />
+          </Col>
+          <Col flex={1}>
+            <ArticlesListItemInput
+              autoFocus
+              onBlur={ () => articleModifier(this.state.id, "price", this.priceRef.current.getValue()) }
+              placeholder="💵"
+              defaultValue={fixed(data.price)}
+              ref={this.priceRef}
+             />
+          </Col>
+          <Col flex={1}>
+            <ArticlesListItemInput
+              autoFocus
+              onBlur={ () => articleModifier(this.state.id, "quantity", this.quantityRef.current.getValue()) }
+              placeholder="5️⃣"
+              defaultValue={fixed(data.quantity)}
+              ref={this.quantityRef}
+             />
+          </Col>
+          <Col flex={1}>
+            <ArticleView>
+              <Text muted >{ fixed(this.state.quantity * this.state.price) }</Text>
+            </ArticleView>
+          </Col>
+      </ArticleRow>
+      {
+        /**
+        <ArticleRow>
+          <DateTimePicker 
+            label="Caducidad"
+            onChange={(value) => props.itemModifier(item.id, "expirationDate", value)}
+            ref={expirationDateRef} 
+            initialValue={item.expirationDate}
+            style={{
+              elevation: 0,
+              padding: 0,
+            }}/>
+        </ArticleRow>
+         */
+      }
+    </SwipeableListItem>
+  )
+  }
+
+}
 
 const styles = StyleSheet.create({
   modalView: {

@@ -21,7 +21,7 @@ export default class List extends Observable {
   }
 
   add(item) {
-    this.list.push(item);
+    this.list.unshift(item);
     this.lastChange = {
       type: "add",
       data: item,
@@ -29,12 +29,20 @@ export default class List extends Observable {
     super.notify();
   }
   
-  modify(id, modifiedItem) {
-    this.list = this.list.map((item) => item.id === id ? modifiedItem : item);
-    this.lastChange = {
-      type: "modified",
-      data: modifiedItem,
-    };
+  modify(id, property, value) {
+    this.list = this.list.map((article) => {
+      if (article?.id === id) {
+        article = {
+          ...article,
+          [property]: value,
+        };
+        this.lastChange = {
+          type: "modified",
+          data: article,
+        };
+        return article;
+      }
+    });
     super.notify();
   }
 
