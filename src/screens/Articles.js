@@ -5,9 +5,9 @@ import { ArticleRow, ArticleView } from '../components/HomeComponents';
 import colors from '../../res/colors';
 const pantry = PantryStore.getInstance();
 
-export const StaticArticleListItem = ({article}) => {
+export const StaticArticleListItem = ({article, ...props}) => {
   return (
-    <ArticleRow style={{gap: 16}}>
+    <ArticleRow style={{gap: 16, ...props.style}}>
       <Col flex={2}>
         <Text centered>{article.name}</Text>
       </Col>

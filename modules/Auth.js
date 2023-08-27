@@ -2,11 +2,12 @@ import Auth from '@react-native-firebase/auth';
 import { GoogleSignin, statusCodes } from '@react-native-google-signin/google-signin';
 
 export default class AppAuth {
+
   static instance = null;
 
   static getInstance() {
-    if (!this.instance) {
-      this.instance = new Auth();
+    if (this.instance === null) {
+      this.instance = new AppAuth();
     }
     return this.instance;
   }
@@ -33,14 +34,27 @@ export default class AppAuth {
         return;
       }
     }
-    const googleCredential = Auth.GoogleAuthProvider.credential(token);
     try {
+      const googleCredential = Auth.GoogleAuthProvider.credential(token);
       return Auth().signInWithCredential(googleCredential);
     } catch(err) {
       console.error(err);
     }
   }
-  currentUser = Auth().currentUser
-  signOut = Auth().signOut
-  onAuthStateChanged = Auth().onAuthStateChanged
+
+  get currentUser() {
+    return Auth().currentUser;
+  }
+
+  signOut() {
+    try {
+      Auth().signOut();
+    } catch(err) {  
+      console.error(err);
+    }
+  }
+
+  onAuthStateChanged(callback) {
+    return Auth().onAuthStateChanged(callback);
+  }
 };

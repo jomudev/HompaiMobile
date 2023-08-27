@@ -1,4 +1,4 @@
-import React, { memo, useState, useRef, useImperativeHandle, forwardRef } from 'react';
+import React, { useState, useEffect, useRef, forwardRef } from 'react';
 import {
   Text, 
   TextBox, 
@@ -6,23 +6,28 @@ import {
   Col,
   DataList,
   SwipeableListItem,
+  Alert,
   View,
-  LazyLoading,
+  LazyButton,
   Button,
   Heading,
-  DateTimePicker
+  ListPicker,
+  DateTimePicker,
+  SectionsList
 } from './UI';
 import colors from '../../res/colors';
 import { Modal as RNModal, StyleSheet } from 'react-native';
-import PantryStore from '../../modules/PantryStore';
 import sizes from '../../res/sizes';
+import HomeLogic from '../screens/screensLogic/HomeLogic/Home.logic';
+import PantryStore from '../../modules/PantryStore';
 const pantryStore = PantryStore.getInstance();
+const logic = new HomeLogic();
+
 
 export const ArticleRow = (props) => (
   <Row centeredAll style={{ 
     gap: sizes.s,
     width: '100%',
-    flex: 1,
     ...props.style 
   }}>
     { props.children }
@@ -39,7 +44,7 @@ export const ArticleView = (props) => (
   </View>
 );
 
-export const ArticleForm = (({addArticleToList, ...props}) => {
+export const ArticleForm = (props) => {
   let nameRef = useRef(null);
   let priceRef = useRef(null);
   let quantityRef = useRef(null);
@@ -51,7 +56,7 @@ export const ArticleForm = (({addArticleToList, ...props}) => {
       price: priceRef.current?.getValue(),
       quantity: quantityRef.current?.getValue() === '0.00' ? fixed(1) : quantityRef.current?.getValue(),
     };
-    addArticleToList(article);
+    logic.articlesList.add(article);
     nameRef.current.clear();
     priceRef.current.clear();
     quantityRef.current.clear();
@@ -59,11 +64,19 @@ export const ArticleForm = (({addArticleToList, ...props}) => {
   }
 
   return (
-  <View style={{ height: 80, width: '100%', ...props.style }}>
+  <View 
+    centered="horizontal" 
+    style={{ 
+      width: '100%', 
+      height: 44, 
+      backgroundColor: colors.background, 
+      borderRadius: sizes.m, 
+      padding: sizes.xs 
+      }}>
     <ArticleRow>
       <Col flex={2}>
         <TextBox 
-          placeholder="Nombre" 
+          placeholder="Nombre del Artículo" 
           ref={nameRef}
           keyboardType="default"
           onSubmitEditing={submit}
@@ -71,7 +84,7 @@ export const ArticleForm = (({addArticleToList, ...props}) => {
       </Col>
       <Col flex={1}>
         <TextBox 
-          placeholder="Precio" 
+          placeholder="💵" 
           ref={priceRef}
           valueType="float"
           keyboardType='number-pad'
@@ -80,7 +93,7 @@ export const ArticleForm = (({addArticleToList, ...props}) => {
       </Col>
       <Col flex={1}>
         <TextBox 
-          placeholder="Cantidad" 
+          placeholder="5️⃣" 
           ref={quantityRef}
           valueType="float"
           keyboardType='number-pad'
@@ -88,45 +101,199 @@ export const ArticleForm = (({addArticleToList, ...props}) => {
           />
       </Col>
     </ArticleRow>
+    <ArticleRow>
+      <Text centered muted size={sizes.xs}>Presiona ✔️ en el teclado para agregar el artículo</Text>
+    </ArticleRow>
   </View>
-)});
+)};
 
-/**
- * AddedArticlesList Component Functions
- */
-const showInput = (inputName, state) => {
-  return {
-    ...state,
-    [`show${inputName}Input`]: !state[`show${inputName}Input`]
-  };
-};
-/**
- * 
- */
-
-export const AddedArticlesList = memo((props) => {
-
-  if (props.isLoading) {
-    return <LazyLoading size="large" />
-  }
-  
+export const ArticlesListSection = (props) => {
   return (
-  <DataList 
+  <SectionsList 
     header={props.header}
-    data={props.data} 
-    render={({item, index}) => (
-      <DynamicArticlesListItem
-        item={item} 
-        key={index}
-        itemModifier={props.itemModifier}
-        swipeableRightContent={props.swipeableRightContent}
-        swipeableLeftContent={props.swipeableLeftContent}
-        swipeableRightFunction={props?.swipeableRightFunction} 
-        swipeableLeftFunction={props?.swipeableLeftFunction}
-        />)}  
+    sections={[props.content]}  
     footer={props.footer}
   />
-)});
+)};
+
+export const ArticlesList = () => {
+  const [articles, setArticles] = useState([]);
+
+  useEffect(() => {
+    const subscriber = logic.articlesList.addObserver(() => {
+      const change = logic.articlesList.lastChange;
+      if (change) {
+        if (change.type !== "add" && change.type !== "set") {
+          return;
+        }
+        setArticles(logic.articlesList.list);
+      }
+    });
+    return subscriber;
+  }, [articles]);
+
+  return (
+    <DataList 
+      inverted
+      data={articles} 
+      render={({item, index}) => (
+        <DynamicArticlesListItem
+          item={item} 
+          key={index * Math.random() * 1000 }
+          swipeableLeftContent={() => <Text>ℹ️</Text>}
+          swipeableRightContent={() => <Text>🗑️</Text>}
+          swipeableLeftFunction={() => Alert.alert("Función no implementada", "Muy pronto estaremos implementando esta función")}
+          swipeableRightFunction={(id) => logic.articlesList.remove(id)} 
+          itemModifier={logic.articlesList.modify}
+        />)}
+    />)
+}
+
+export const ArticlesListTotal = () => {
+  const [state, setState] = useState({
+    total: 0,
+    quantity: 0,
+  });
+
+  useEffect(() => {
+    const subscriber = logic.articlesList.addObserver(() => {
+      setState({
+        total: logic.articlesList.total,
+        quantity: logic.articlesList.list.length,
+      });
+    });
+    return subscriber;
+  }, []);
+
+  return <Heading centered size="l" muted > 💰 { fixed(state.total) } ({ state.quantity })</Heading>;
+}
+
+export const PantrySelector = () => {
+  const [loading, setLoading] = useState(true);
+  const modalRef = useRef();
+
+  useEffect(() => {
+    const subscriber = logic.pantriesList.addObserver(() => {
+
+      if (logic.pantriesList.list.length === 0) {
+        return;
+      }
+      logic.selectedPantry = logic.pantriesList.list[0]?.name;
+      setLoading(false);
+    });
+
+    return subscriber;
+  }, [loading]);  
+
+  return !loading && (
+      <ListPicker 
+        initialValue={logic.pantriesList.list[0]?.name}
+        style={{zIndex: 1, marginBottom: 16, marginTop: 16}}
+        onChange={(value) => logic.selectedPantry = value} 
+        data={logic.pantriesList.list.map(pantry => pantry.name)}>
+        <Button textProps={{ numberOfLines: 1 }} onPress={() => modalRef.current.open()}>
+          Nueva Despensa
+        </Button>
+        <Modal ref={modalRef}>
+          <PantryCreator onSubmit={async (pantry) => {
+              modalRef.current.close();
+              logic.pantriesList.add(pantry);
+            }}/>
+        </Modal>
+      </ListPicker>
+    )
+}
+
+export const ArticlesHeader = () => {
+  return (
+  <View style={{ width: '100%'}}>
+    <PantrySelector />
+    <ArticlesListTotal />
+    <ArticleForm />
+  </View>
+)}
+
+export const ArticlesFooter = () => {
+  const [listIsReady, setListReady] = useState(false);
+  const [userWantView, setUserWantView] = useState(false);
+
+  useEffect(() => {
+    const subscriber = logic.articlesList.addObserver(() => {
+      let isListReady = true;
+      if (logic.articlesList.list.length > 0 && logic.selectedPantry) {
+        isListReady = true;
+        return;
+      }
+      setListReady(isListReady);
+    });
+    return subscriber;
+  }, []);
+
+  return listIsReady && (
+    <View>
+      <Button onPress={() => setUserWantView(!userWantView)} style={{ 
+                position: "absolute",
+                bottom: 80,
+                right: sizes.s,
+                width: '30%',
+                height: 50,
+                backgroundColor: colors.primary,
+                padding: sizes.m, 
+              }}>
+        opciones...
+      </Button>
+      {
+        userWantView && (
+          <View style={{backgroundColor: "none"}}>
+            <Button 
+              style={{
+                position: "absolute",
+                bottom: 200,
+                right: sizes.s,
+                width: '30%',
+                backgroundColor: colors.secondary,
+                padding: sizes.m, 
+              }}
+              onPress={() => {
+                Alert.alert("Vaciar", "Seguro que quieres vaciar lista?", [
+                  {
+                    text: "No",
+                    onPress: () => {}
+                  },
+                  {
+                    text: "Sí",
+                    onPress: () => logic.articlesList.clear()
+                  }
+                ])
+              }}>
+              🧹 Limpiar Lista
+            </Button>
+            <LazyButton
+              style={{ 
+                position: "absolute",
+                bottom: 140,
+                right: sizes.s,
+                width: '50%',
+                backgroundColor: colors.warning,
+                padding: sizes.m, 
+              }}
+              textStyle={{
+                color: 'white',
+              }}
+              onPress={async () => {
+                if (!listIsReady) {
+                  return;
+                }
+                await logic.createBatch(logic.selectedPantry);
+              }}
+              >
+              📃 Guardar Lista
+            </LazyButton>
+          </View>
+        )
+      }
+    </View>)
+}
 
 export class Modal extends React.Component {
   constructor(props) {
@@ -187,8 +354,12 @@ export const PantryCreator = (props, ref) => {
         </Col>
         <Col flex={1}>
           <Button onPress={() => {
-              createPantry(inputRef.current.getValue());
-              props?.onSubmit()
+              const pantryName = inputRef.current.getValue();
+              createPantry(pantryName);
+              props?.onSubmit({
+                id: parseInt(Math.random() * 1e9),
+                pantryName
+              });
             }}>
             Crear
           </Button>
@@ -204,25 +375,53 @@ const ArticlesListItemInput = forwardRef(({item, ...props}, ref) => {
     <Col>
       {
         showing 
-          ? <TextBox { ...props } ref={ref}/>
-          : <View isPressable centered onPress={ () => setShowing(true) } >
+          ? <TextBox {...props} onBlur={() => {
+              props?.onBlur();
+              setShowing(false);
+            }} ref={ref} defaultValue={props?.defaultValue} style={{flex: 1}} />
+          : <ArticleView style={{ flex: 1 }} isPressable centered onPress={ () => setShowing(true) } >
               <Text bold>{props.defaultValue}</Text>
-            </View>
+            </ArticleView>
       }
     </Col>
   );
 })
 
 export const DynamicArticlesListItem = ({item, ...props})  => {
+  const [data, setData] = useState(item);
   const nameRef = useRef(null);
   const priceRef = useRef(null);
   const quantityRef = useRef(null);
   const expirationDateRef = useRef(null);
+  const [removed, setRemoved] = useState(false);
 
-  return (
+  useEffect(() => {
+    const subscriber = logic.articlesList.addObserver(() => {
+      const change = logic.articlesList.lastChange;
+      if (change === null) {
+        return;
+      }
+      if (change.type === "modified") {
+        if (change.data.id !== data.id) {
+          return;
+        }
+        setData(change.data);
+      } 
+      if (change.type === "remove") {
+        if (change.data !== data.id) {
+          return;
+        }
+        setRemoved(true);
+      }
+    });
+
+    return subscriber;
+  }, []);
+
+  return !removed && (
     <SwipeableListItem
       style={{ 
-        height: 88,
+        height: 50,
         borderRadius: sizes.m,
         padding: sizes.s,
         backgroundColor: colors.background,
@@ -231,53 +430,64 @@ export const DynamicArticlesListItem = ({item, ...props})  => {
       leftContent={props.swipeableLeftContent}
       rightColor={colors.danger}
       leftColor={colors.secondary}
-      rightPress={() => props?.swipeableRightFunction(item.id)}
-      leftPress={() => props?.swipeableLeftFunction(item.id)}
+      rightPress={() => props?.swipeableRightFunction(data.id)}
+      leftPress={() => props?.swipeableLeftFunction(data.id)}
       >
       <ArticleRow>
         <Col flex={2}>
           <ArticlesListItemInput
             autoFocus
-            onEndEditing={ () => props.itemModifier(item.id, "name", nameRef.current.getValue()) }
+            onBlur={() => props.itemModifier(data.id, "name", nameRef.current.getValue())}
             placeholder="Nombre"
-            defaultValue={item.name}
+            defaultValue={data.name}
             ref={nameRef}
            />
         </Col>
-          <ArticlesListItemInput
-            autoFocus
-            onEndEditing={ () => props.itemModifier(item.id, "price", priceRef.current.getValue()) }
-            placeholder="Precio"
-            defaultValue={item.price}
-            ref={priceRef}
-           />
         <Col flex={1}>
           <ArticlesListItemInput
             autoFocus
-            onEndEditing={ () => props.itemModifier(item.id, "quantity", quantityRef.current.getValue()) }
-            placeholder="Cantidad"
-            defaultValue={item.price}
+            onBlur={ () => props.itemModifier(data.id, "price", priceRef.current.getValue()) }
+            placeholder="💵"
+            defaultValue={fixed(data.price)}
+            ref={priceRef}
+           />
+        </Col>
+        <Col flex={1}>
+          <ArticlesListItemInput
+            autoFocus
+            onBlur={ () => props.itemModifier(data.id, "quantity", quantityRef.current.getValue()) }
+            placeholder="5️⃣"
+            defaultValue={fixed(data.quantity)}
             ref={quantityRef}
            />
         </Col>
+        <Col flex={1}>
+          <ArticleView>
+            <Text muted >{ fixed(data.quantity * data.price) }</Text>
+          </ArticleView>
+        </Col>
     </ArticleRow>
-    <ArticleRow>
-      <DateTimePicker 
-        label="Caducidad"
-        onChange={(value) => props.itemModifier(item.id, "expirationDate", value)}
-        ref={expirationDateRef} 
-        initialValue={item.expirationDate}
-        style={{
-          elevation: 0,
-          padding: 0,
-        }}/>
-    </ArticleRow>
+    {
+      /**
+      <ArticleRow>
+        <DateTimePicker 
+          label="Caducidad"
+          onChange={(value) => props.itemModifier(item.id, "expirationDate", value)}
+          ref={expirationDateRef} 
+          initialValue={item.expirationDate}
+          style={{
+            elevation: 0,
+            padding: 0,
+          }}/>
+      </ArticleRow>
+       */
+    }
   </SwipeableListItem>
 )}
 
 const styles = StyleSheet.create({
   modalView: {
-    width: '80%',
+    width: '70%',
     backgroundColor: colors.background,
     borderRadius: 24,
     padding: 24,

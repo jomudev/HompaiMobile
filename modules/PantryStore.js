@@ -20,18 +20,30 @@ export default class PantryStore {
   }
 
   async getPantries() {
+    var pantries = [];
     try {
-      const pantries = await axion.get("/articles/pantries") || [];
+      const newPantries = await axion.get("/articles/pantries");
       storage.store("pantries", pantries);
-      return pantries;
+      if (!newPantries) {
+        throw new Error("No se logró conectar al servidor");
+      }
+      pantries = newPantries;
     } catch(err) {
       console.error(err);
-      return storage.get("pantries") || [];
+      const newPantries = storage.get("pantries");
+      if (newPantries?.length) {
+        pantries = newPantries;
+      }
     }
+    return pantries;
   }
 
   async createPantry(pantryName) {
-    await axion.post("/articles/createPantry", { pantryName });
+    return await axion.post("/articles/createPantry", { pantryName });
+  }
+
+  async getArticlesActualList() {
+    return await storage.get("articleActualList") || [];
   }
 
   async getArticles() {

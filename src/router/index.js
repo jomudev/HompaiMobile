@@ -4,7 +4,7 @@ import Login from '../screens/Login';
 import MainRouter from './mainRouter';
 import Auth from '../../modules/Auth';
 
-const auth = Auth.getInstance()
+const auth = Auth.getInstance();
 
 export default function (props) {
   const [state, setState] = useState({
@@ -12,7 +12,7 @@ export default function (props) {
   });
 
   useEffect(() => {
-    return auth.onAuthStateChanged(async (user) => {
+    auth.onAuthStateChanged(async (user) => {
       setState({user});
     });
   }, []);

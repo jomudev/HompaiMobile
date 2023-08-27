@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
-import { Layout, Text } from '../components/UI';
-import { Link, StackActions } from '@react-navigation/native';
+import { Layout, Text, PressableLink, View } from '../components/UI';
 import PantryStore from '../../modules/PantryStore';
+import sizes from '../../res/sizes';
 const store = PantryStore.getInstance();
 
 export default function Pantries (props) {
@@ -17,16 +17,23 @@ export default function Pantries (props) {
 
   return (
     <Layout>
-      {
-        pantries.map(pantry => (
-          <Link 
-            to={{ screen: "Pantry", params: pantry }}
-            key={pantry.id}
-            >
-            {pantry.name}
-          </Link>
-        ))
-      }
+      <View scrollable>
+        {
+          pantries.map(pantry => (
+            <PressableLink
+              to={{ screen: "Pantry", params: pantry }}
+              key={pantry.id}
+              style={{
+                padding: sizes.xl,
+                width: '100%',
+                textAlign: 'center',
+              }}
+              >
+              <Text>{pantry.name}</Text>
+            </PressableLink>
+          ))
+        }
+      </View>
     </Layout>
   );
 }

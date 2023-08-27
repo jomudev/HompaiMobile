@@ -8,7 +8,6 @@ import {
   FlatList,
   ActivityIndicator,
   ScrollView,
-  KeyboardAvoidingView,
  } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import colors from '../../res/colors';
@@ -19,11 +18,10 @@ import { useLinkProps } from '@react-navigation/native';
 import sizes from '../../res/sizes';
 
 export const ListPicker = forwardRef((props, ref) => {
-  const [selectedValue, setSelectedValue] = useState();
+  const [selectedValue, setSelectedValue] = useState(props.data[0]);
   const pickerRef = useRef();
 
   useImperativeHandle(ref, () => ({
-    getValue: () => selectedValue,
     open: () => pickerRef.current.focus(),
     close: () => pickerRef.current.blur(),
   }));
@@ -34,9 +32,9 @@ export const ListPicker = forwardRef((props, ref) => {
         ref={pickerRef}
         style={{ flex: 1 }}
         selectedValue={selectedValue}
-        onValueChange={ (value) => {
-          setSelectedValue(value);
+        onValueChange={(value) => {
           props?.onChange(value);
+          setSelectedValue(value);
         }}
       >
         {
@@ -134,25 +132,31 @@ export const SwipeableListItem = (props) => {
 
 export const View = (props) => {
   const alignments =  {
-      true: { 
-        alignItems: 'center', 
+      true: {
+        alignItems: 'center',
         justifyContent: 'center' 
       }, 
       vertical: { 
-        justifyContent: 'center' 
+        alignItems: 'center'
       },
       horizontal: {
-        alignItems: 'center'
+        justifyContent: 'center'
       },
       false: {},
     }
-    const Component = (elementProps) => props.isPressable ? 
-      <Pressable {...elementProps}>{elementProps.children}</Pressable> 
-      : <RNView {...elementProps}>{elementProps.children}</RNView>
+    var Component = RNView;
+    if (props.isPressable) {
+      Component = Pressable;
+    } 
+    if (props.scrollable) {
+      Component = ScrollView;
+    }
   return (
     <Component {...props} style={{
+      overflow: 'visible',
       ...props.style,
-      ...alignments[props.centered],
+      width: "100%",
+      ...!props.scrollable && alignments[props.centered],
       }}>
       { props.children }
     </Component>
@@ -197,7 +201,7 @@ export const Col = (props) => {
 
 export const Container = (props)  => {
   return (
-    <View style={{
+    <View scrollable={props.scrollable} style={{
       ...props.fluid ? styles.containerFluid : styles.container, 
       ...props.style, 
       ...props.flex && { flex: props.flex }
@@ -209,7 +213,12 @@ export const Container = (props)  => {
 
 export const Button = (props) => {
   return (
-    <Pressable style={{...styles.button, ...props.style}} onPress={props.onPress} >
+    <Pressable style={{
+      ...styles.button, 
+      ...props.style,
+      ...props.muted && { backgroundColor: 'none', elevation: 0 },
+      ...props.width && { width: props.width }, 
+      }} onPress={props.onPress} >
       <Text {...props.textProps} style={{...styles.buttonText, ...props.textProps?.style}} color={props.textColor}>
         { props.children }
       </Text>
@@ -257,10 +266,10 @@ export const Text = (props) => {
   return (
     <RNText
       style={{ 
-      ...props.centered ? { textAlign: 'center' } : {},
-      ...props.centeredVertical ? { textAlignVertical: 'center' } : {},
+      ...props.centered ? { textAlign: 'center' } : null,
+      ...props.centeredVertical ? { textAlignVertical: 'center' } : null,
         color: props.muted ? colors.textMuted : (colors[props.color] || props.color) || colors.text, 
-      ...props.bold ? { fontWeight: 'bold' } : {},
+      ...props.bold ? { fontWeight: 'bold' } : null,
       ...props.size && { fontSize: textSizes(props.size) }
         }} 
       {...props}
@@ -273,7 +282,14 @@ export const Text = (props) => {
 
 export const Heading = (props) => {
   return (
-    <Text style={{...styles.heading, fontSize: textSizes(props.size) || textSizes("xl") }} {...props} >
+    <Text 
+      style={{
+        ...props.centered ? { textAlign: 'center'} : null,
+        ...styles.heading, 
+        fontSize: textSizes(props.size) || textSizes("xl"), 
+        ...props.style}} 
+        {...props}
+         >
       { props.children }
     </Text>
   );
@@ -297,6 +313,7 @@ export const TextBox = forwardRef((props, ref) => {
     },
     clear: () => inputRef.current.clear(),
     focus: () => inputRef.current.focus(),
+    setValue: (value) => setValue(value),
   })});
 
   return (
@@ -305,48 +322,45 @@ export const TextBox = forwardRef((props, ref) => {
         onChangeText={setValue}
         ref={inputRef}
         value={value}
-        style={{...styles.minimalTextBox, fontSize: props.textSize || 12}}
+        style={{...styles.minimalTextBox, fontSize: props.textSize || 12, width: '100%'}}
         />
   )
 })
 
+export const SectionsList = (props) => {
+  return (
+    <FlatList 
+      ListHeaderComponent={props?.header}
+      data={props.sections}
+      renderItem={({item, index}) => <View key={index} style={{width: '100%'}}>{item}</View>}
+      ListFooterComponent={props?.footer}
+    />
+    )
+}
+
 export const DataList = (props) => {
-
-  return <View centered style={{ flex: 1, flexDirection: 'column', width: '100%' }}>
-          <View>
-            { props?.header }
-          </View>
-          <ScrollView contentContainerStyle={{ flex: 1, alignItems: 'center' }} style={{ width: '100%' }}>
-            { props.data.map((item, index) => (
-              <View style={{ width: '90%', paddingVertical: sizes.s, borderRadius: sizes.m }} key={item.id}>
-                { props.render({ item, index }) }
-              </View>
-              ))}
-          </ScrollView>
-          <View>
-            { props?.footer }
-          </View>
-        </View>
-
-  return <FlatList 
-    {...props}
-    data={props.data}
-    style={styles.flatList}
-    contentContainerStyle={styles.flatListContainer}
-    renderItem={props.render}
-    ListHeaderComponent={props.header}
-    ListFooterComponent={props.footer}
-  />
+  return (
+    <FlatList 
+      ListHeaderComponent={props?.header} 
+      inverted={props.inverted}
+      data={props.data}
+      renderItem={({item, index}) => (
+        <View style={{ width: '100%', paddingVertical: sizes.s, borderRadius: sizes.m }} key={item.id}>
+          { props.render({ item, index }) }
+        </View>)}
+      ListFooterComponent={props?.footer}
+      />
+  )
 }
 
 export const styles = StyleSheet.create({
   layoutView: {
-    flex: 1,
-    alignItems: 'center',
+    width: '100%',
     justifyContent: 'center',
     backgroundColor: colors.background,
   },
   heading: {
+    width: '100%',
     fontWeight: 'bold',
   },
   container: {
@@ -359,11 +373,13 @@ export const styles = StyleSheet.create({
   },
   button: {
     paddingVertical: 8,
+    paddingHorizontal: 16,
     width: '100%',
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: colors.primary,
     elevation: sizes.xl,
+    shadowOpacity: 0.01,
     borderRadius: sizes.m,
   },
   buttonText: {

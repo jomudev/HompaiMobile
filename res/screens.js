@@ -5,4 +5,5 @@ export default {
   PANTRY: "Pantry",
   BATCHES: "Batches",
   BATCH: "Batch",
+  LOGOUT: 'LOGOUT',
 }

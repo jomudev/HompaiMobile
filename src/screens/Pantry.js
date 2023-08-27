@@ -3,8 +3,7 @@ import {
   Layout, 
   Row, 
   Col, 
-  Text, 
-  DataList, 
+  Text,
   Heading, 
   View, 
   SwipeableListItem, 
@@ -13,7 +12,11 @@ import {
 import PantryStore from '../../modules/PantryStore';
 import colors from '../../res/colors';
 import screens from '../../res/screens';
+import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
+import sizes from '../../res/sizes';
+
 const store = PantryStore.getInstance();
+
 
 export default function Pantry(props) {
   const { id, name } = props.route.params;
@@ -27,14 +30,13 @@ export default function Pantry(props) {
       setState({batches});
     }
     fetchData();
-  }, []);
+  }, [id]);
 
   return (
-    <Layout>
-        <Text>Lotes de mi {name}</Text>
-        <DataList 
-          data={state.batches}
-          render={({item, index}) => 
+    <Layout> 
+      <View scrollable>
+        {
+          state.batches.map((item, index) => 
             <BatchListItem 
               data={item} 
               key={item.id} 
@@ -42,8 +44,10 @@ export default function Pantry(props) {
                 ...state,
                 batches: state.batches.filter((batch, batchIndex) => index !== batchIndex),
                 })} 
-            />}
-        />
+            />
+            )
+        }
+      </View>
     </Layout>
   );
 }
@@ -56,14 +60,14 @@ export const BatchListItem = (props) => {
   const { data } = props;
   return (
     <SwipeableListItem
-      style={{ height: 100 }}
+      style={{ height: 100, borderRadius: 16 }}
       containerStyle={{
         height: '100%',
-        backgroundColor: colors.secondary,
-        padding: 16,
-        borderRadius: 16,
+        width: '100%',
+        backgroundColor: colors.background,
+        borderRadius: 16
       }}
-      rightContent={<Text color="white">Eliminar</Text>}
+      rightContent={<Text color="white"><Icon name="delete" size={sizes.xl} /></Text>}
       rightColor={colors.danger}
       rightPress={async () => {
           await deleteBatch(data.id);
@@ -81,18 +85,15 @@ export const BatchListItem = (props) => {
         <View style={{
         }}>
           <Row centered>
-            <Col flex={1} >
-              <Heading size="xl" bold>{localeDate(data.date).weekday.toUpperCase()} </Heading>
+            <Col flex={1} centeredAll>
+              <Heading centered size="m" bold>{localeDate(data.date).weekday} </Heading>
             </Col>
             <Col flex={1} centeredAll>
-              <Row centered>
-                <Heading centered size="m" bold>Total: {fixed(data.total)}</Heading>
+              <Row>
+                <Text centered size="m" bold>Artículos: {data.articlesQuantity}</Text>
               </Row>
-              <Row centered>
-                <Heading centered size="s" bold>Artículos: {data.articlesQuantity}</Heading>
-              </Row>
-              <Row centered>
-                <Text centered size="xs">{localeDate(data.date).dateString}</Text>
+              <Row>
+                <Text centered size="m" bold>Total: {fixed(data.total)}</Text>
               </Row>
             </Col>
           </Row>

@@ -16,24 +16,35 @@ export default function BatchScreen(props) {
       setState(batch)
     }
     fetchData();
-  }, []);
+  }, [props.route.params.id]);
 
   const batch = state.batch;
 
   return (
     <Layout>
-      <Container>
-        <Heading size="xl" bold>
-          Lote del {localeDate(batch.date).dateString}
-        </Heading>
-        <DataList 
-          data={state.articles}
-          render={({item}) => {
-            console.log(item);
-            return <StaticArticleListItem article={item} />
-          }}
-        />
-      </Container>
+      <Heading size="l" bold>
+        Lote del {localeDate(batch.date).dateString}
+      </Heading>
+      <DataList 
+        data={state.articles}
+        render={({item}) => {
+          console.log(item);
+          return (
+            <View>
+              { 
+                /**
+                item.expirationDate && <Text size="s" muted>Cad:{localeDate(item.expirationDate).dateString}</Text> 
+                **/
+              }
+              <Text>
+                <Heading size="m" bold >{item.quantity} {item?.measure ? item.measure : null}de {item.name} </Heading>
+                <Text >💵{fixed(item.price)} </Text>
+                <Text bold>💰{fixed(item.price * item.quantity)}</Text>
+              </Text>
+            </View> 
+            )
+        }}
+      />
     </Layout>
   );
 }
