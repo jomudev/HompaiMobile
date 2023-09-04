@@ -37,17 +37,6 @@ window.localeDate = (date) => {
   }
 }
 
-window.toReversed = (array) => {
-  if (array === null && array?.length === undefined) {
-    throw new Error("The object need to be an iterator");
-  }
-  let reversedArray = [];
-  for (let i = array.length - 1; i >= 0; i--) {
-    reversedArray.push(array[i]);
-  }
-  return reversedArray;
-}
-
 
 // registerRootComponent calls AppRegistry.registerComponent('main', () => App);
 // It also ensures that whether you load the app in Expo Go or in a native build,

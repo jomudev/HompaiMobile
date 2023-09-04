@@ -1,6 +1,4 @@
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
-import { Image, View } from 'react-native';
-import { PressableLink, Text } from '../components/UI';
 import screens from '../../res/screens';
 import Home from '../screens/Home';
 import Articles from '../screens/Articles';
@@ -8,8 +6,7 @@ import Pantries from '../screens/Pantries';
 import Pantry from '../screens/Pantry';
 import Batch from '../screens/Batch';
 import Logout from '../screens/Logout';
-import Auth from '../../modules/Auth/';
-const auth = Auth.getInstance();
+import { HeaderRight, HeaderLeft } from '../components/HomeHeader';
 
 const Stack = createNativeStackNavigator();
 
@@ -23,20 +20,8 @@ export default function MainRouter () {
             paddingTop: 24,
           },
           title: "Crear Lista",
-          headerLeft: () => (
-            <PressableLink to={{ screen: screens.LOGOUT }} style={{ marginRight: 16 }}>
-                <Image source={{ uri: auth.currentUser.photoURL }} width={32} height={32} />
-            </PressableLink>
-          ),
-          headerRight: () => (
-            <>
-            <PressableLink to={{ screen: screens.PANTRIES }}>
-              <Text size="l">🍚</Text>
-            </PressableLink>
-            </>
-          )
+          headerLeft: () => <HeaderLeft/>,
         }}
-
         component={Home} 
         />
       <Stack.Screen 

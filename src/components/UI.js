@@ -296,29 +296,20 @@ export const Heading = (props) => {
 }
 
 export const TextBox = forwardRef((props, ref) => {
-  const [value, setValue] = useState("");
+  const [value, setValue] = useState(undefined);
   let inputRef = useRef(null);
   useImperativeHandle(ref, () => {
     return ({
-    getValue: () => {
-      let float = fixed(value);
-      float = isNaN(float) ? fixed(0) : float;
-      let int = parseInt(value, 10);
-      int = isNaN(int) ? parseInt(0, 10) : int;
-      let resultTypes = {
-        int,
-        float,
-      }
-      return resultTypes[props.valueType] || value;
-    },
-    clear: () => inputRef.current.clear(),
-    focus: () => inputRef.current.focus(),
-    setValue: (value) => setValue(value),
+      getValue: () => value,
+      clear: () => setValue(""),
+      focus: () => inputRef.current.focus(),
+      setValue: (value) => setValue(value),
   })});
 
   return (
       <TextInput
         {...props}
+        defaultValue={props.defaultValue}
         onChangeText={setValue}
         ref={inputRef}
         value={value}
@@ -342,11 +333,10 @@ export const DataList = (props) => {
   return (
     <FlatList 
       initialNumToRender={10}
-      ListHeaderComponent={props?.header} 
-      inverted={props.inverted}
+      ListHeaderComponent={props?.header}
       data={props.data}
       renderItem={({item, index}) => (
-        <View style={{ width: '100%', paddingVertical: sizes.s, borderRadius: sizes.m }} key={item.id}>
+         <View style={{ width: '100%', paddingVertical: sizes.s, borderRadius: sizes.m }} key={Math.random() * 1e9}>
           { props.render({ item, index }) }
         </View>)}
       ListFooterComponent={props?.footer}
@@ -356,6 +346,7 @@ export const DataList = (props) => {
 
 export const styles = StyleSheet.create({
   layoutView: {
+    height: '100%',
     width: '100%',
     justifyContent: 'center',
     backgroundColor: colors.background,

@@ -1,4 +1,13 @@
-import React, { Component, useState, useEffect, useRef, forwardRef } from 'react';
+import React,
+  {
+    useState, 
+    useEffect, 
+    createRef, 
+    useRef, 
+    forwardRef, 
+    useImperativeHandle,
+    useCallback
+  } from 'react';
 import {
   Text, 
   TextBox, 
@@ -6,7 +15,6 @@ import {
   Col,
   DataList,
   SwipeableListItem,
-  Alert,
   View,
   LazyButton,
   Button,
@@ -16,14 +24,12 @@ import {
   SectionsList
 } from './UI';
 import colors from '../../res/colors';
-import { Modal as RNModal, StyleSheet } from 'react-native';
+import { ActivityIndicator, Modal as RNModal, StyleSheet, Alert } from 'react-native';
 import sizes from '../../res/sizes';
-import HomeLogic from '../screens/screensLogic/HomeLogic/Home.logic';
 import PantryStore from '../../modules/PantryStore';
 import Article from '../objects/Article';
+import { Keyboard } from 'react-native';
 const pantryStore = PantryStore.getInstance();
-const logic = new HomeLogic();
-
 
 export const ArticleRow = (props) => (
   <Row centeredAll style={{ 
@@ -51,9 +57,14 @@ export const ArticleForm = (props) => {
   let quantityRef = useRef(null);
 
   const submit = () => {
-    
-    const article = new Article(Math.random() * 1e9, nameRef.current?.getValue(), priceRef.current?.getValue(), quantityRef.current?.getValue())
-    logic.articlesList.add(article);
+    const article = new Article(
+      Math.random() * 1e9, 
+      nameRef.current?.getValue(), 
+      priceRef.current?.getValue(), 
+      quantityRef.current?.getValue()
+    );
+
+    props.onSubmit(article);
     nameRef.current.clear();
     priceRef.current.clear();
     quantityRef.current.clear();
@@ -104,218 +115,143 @@ export const ArticleForm = (props) => {
   </View>
 )};
 
-export const ArticlesListSection = (props) => {
-  return (
-  <SectionsList 
-    header={props.header}
-    sections={[props.content]}  
-    footer={props.footer}
-  />
-)};
-
-export const ArticlesList = () => {
-  const [articles, setArticles] = useState([]);
-
-  useEffect(() => {
-    const subscriber = logic.articlesList.addObserver(() => {
-      const change = logic.articlesList.lastChange;
-      if (change) {
-        if (change.type !== "add" && change.type !== "set") {
-          return;
-        }
-        setArticles(logic.articlesList.list);
-      }
-    });
-    return subscriber();
-  }, [articles]);
-
+export const ArticlesList = (props) => {
   return (
     <DataList
-      data={articles} 
+      data={props.articles}
       render={({item, index}) => (
         <DynamicArticlesListItem
-          item={item} 
-          key={index * Math.random() * 1000 }
+          data={item}
+          key={index * Math.random()}
+          onModify={props.onModify}
           swipeableLeftContent={() => <Text>ℹ️</Text>}
           swipeableRightContent={() => <Text>🗑️</Text>}
-          swipeableLeftFunction={() => Alert.alert("Función no implementada", "Muy pronto estaremos implementando esta función")}
-          swipeableRightFunction={(id) => logic.articlesList.remove(id)}
+          swipeableLeftFunction={props.onInfo}
+          swipeableRightFunction={props.onDelete}
         />)}
     />)
 }
 
-export const ArticlesListTotal = () => {
-  const [state, setState] = useState({
-    total: 0,
-    quantity: 0,
-  });
-
-  useEffect(() => {
-    const subscriber = logic.articlesList.addObserver(() => {
-      setState({
-        total: logic.articlesList.total,
-        quantity: logic.articlesList.list.length,
-      });
-    });
-    return subscriber;
-  }, []);
-
-  return <Heading centered size="l" muted > 💰 { fixed(state.total) } ({ state.quantity })</Heading>;
+export const ArticlesListTotal = (props) => {
+  return <Heading style={{ marginTop: sizes.l }} centered size="l" muted > 💰 { fixed(props.total) } ({ props.quantity })</Heading>;
 }
 
-export const PantrySelector = () => {
-  const [loading, setLoading] = useState(true);
+export const PantrySelector = (props) => {
+  const [pantries, setPantries] = useState([]);
+  const [isLoading, setLoading] = useState(true);
   const modalRef = useRef();
 
   useEffect(() => {
-    const subscriber = logic.pantriesList.addObserver(() => {
-
-      if (logic.pantriesList.list.length === 0) {
-        return;
-      }
-      logic.selectedPantry = logic.pantriesList.list[0]?.name;
+    pantryStore.getPantries().then(pantries => {
+      setPantries(pantries);
+      props.onLoad(pantries);
       setLoading(false);
     });
+  }, []);
 
-    return subscriber;
-  }, [loading]);  
-
-  return !loading && (
+  return isLoading ? <ActivityIndicator size="small" /> : (
       <ListPicker 
-        initialValue={logic.pantriesList.list[0]?.name}
+        initialValue={pantries[0]?.name}
         style={{zIndex: 1, marginBottom: 16, marginTop: 16}}
-        onChange={(value) => logic.selectedPantry = value} 
-        data={logic.pantriesList.list.map(pantry => pantry.name)}>
+        onChange={props.onChange} 
+        data={pantries.map(pantry => pantry.name)}>
         <Button textProps={{ numberOfLines: 1 }} onPress={() => modalRef.current.open()}>
           Nueva Despensa
         </Button>
         <Modal ref={modalRef}>
           <PantryCreator onSubmit={async (pantry) => {
-              modalRef.current.close();
-              logic.pantriesList.add(pantry);
+              setPantries(pantries.concat(pantry))
             }}/>
         </Modal>
       </ListPicker>
     )
 }
 
-export const ArticlesHeader = () => {
+export const ArticlesHeader = (props) => {
   return (
   <View style={{ width: '100%'}}>
-    <PantrySelector />
-    <ArticlesListTotal />
-    <ArticleForm />
+    {/**<PantrySelector onChange={props.onSelectPantry} onLoad={props.onLoadPantries} /> */}
+    <ArticlesListTotal total={props.total} quantity={props.quantity} />
+    <ArticleForm onSubmit={props.onAddArticle} />
   </View>
 )}
 
-export const ArticlesFooter = () => {
-  const [listIsReady, setListReady] = useState(false);
-  const [userWantView, setUserWantView] = useState(false);
+export const ArticlesFooter = (props) => {
+  const [hidden, hide] = useState(false);
+  const handleHide = useCallback(() => hide(true));
+  const handleShow = useCallback(() => hide(false));
 
   useEffect(() => {
-    const subscriber = logic.articlesList.addObserver(() => {
-      let isListReady = true;
-      if (logic.articlesList.list.length > 0 && logic.selectedPantry) {
-        isListReady = true;
-        return;
-      }
-      setListReady(isListReady);
-    });
-    return subscriber;
+    Keyboard.addListener("keyboardDidShow", handleHide); 
+    Keyboard.addListener("keyboardDidHide", handleShow); 
+    return () => {
+      Keyboard.removeAllListeners("keyboardDidHide");
+      Keyboard.removeAllListeners("keyboardDidShow");
+    }
   }, []);
 
-  return listIsReady && (
-    <View>
-        <View style={{backgroundColor: "none"}}>
-          <Button 
-            style={{
-              marginTop: sizes.m,
-              width: '50%',
-              alignSelf: 'center',
-              backgroundColor: colors.secondary,
-              padding: sizes.m, 
-            }}
-            onPress={() => {
-              Alert.alert("Vaciar", "Seguro que quieres vaciar lista?", [
-                {
-                  text: "No",
-                  onPress: () => {}
-                },
-                {
-                  text: "Sí",
-                  onPress: () => logic.articlesList.clear()
-                }
-              ])
-            }}>
-            🧹 Limpiar Lista
-          </Button>
-          <LazyButton
-            style={{
-              marginTop: sizes.m,
-              width: '50%',
-              alignSelf: 'center',
-              backgroundColor: colors.warning,
-              padding: sizes.m, 
-            }}
-            textStyle={{
-              color: 'white',
-            }}
-            onPress={async () => {
-              if (!listIsReady) {
-                return;
-              }
-              await logic.createBatch(logic.selectedPantry);
-            }}
-            >
-            📃 Guardar Lista
-          </LazyButton>
+  return (
+      <View style={{backgroundColor: "none", display: hidden ? "none" : "flex"}}>
+        <Button 
+          style={{
+            marginTop: sizes.m,
+            width: '50%',
+            alignSelf: 'center',
+            backgroundColor: colors.secondary,
+            padding: sizes.m, 
+          }}
+          onPress={props.clearList}>
+          🧹 Limpiar Lista
+        </Button>
+        <LazyButton
+          style={{
+            marginTop: sizes.m,
+            width: '50%',
+            alignSelf: 'center',
+            backgroundColor: colors.warning,
+            padding: sizes.m, 
+          }}
+          textStyle={{
+            color: 'white',
+          }}
+          onPress={async () => {
+            setIsLoading(true);
+            await props.onSubmit();
+            setIsLoading(false);
+          }}
+          >
+          📃 Guardar Lista
+        </LazyButton>
+      </View>)
+}
+
+export const Modal = forwardRef((props, ref) => {
+  const [visible, setVisible] = useState(false);
+
+  const imperativeMethods = () => ({
+    close: () => setVisible(false),
+    open: () => setVisible(true),
+  });  
+
+  useImperativeHandle(ref, imperativeMethods);
+    
+  return (
+    <RNModal 
+      visible={visible}
+      transparent
+      animationType='slide'
+      onRequestClose={() => imperativeMethods().close()}
+      >
+      <View style={styles.modalContainer}>
+        <View style={styles.modalView}>
+        {
+          props.children
+        }
         </View>
-    </View>)
-}
-
-export class Modal extends React.Component {
-  constructor(props) {
-    super(props);
-    this.state = {
-      visible: false
-    }
-  }
-
-  open() {
-    this.setState({ visible: true });
-  }
-  
-  close() {
-    this.setState({ visible: false });
-  }
-
-  render() {
-    return (
-      <RNModal 
-        visible={this.state.visible}
-        transparent
-        animationType='slide'
-        onRequestClose={() => this.close()}
-        >
-        <View style={styles.modalContainer}>
-          <View style={styles.modalView}>
-          {
-            this.props.children
-          }
-          </View>
-        </View>
-      </RNModal>
-    )
-  }
-}
-
-/**
- * 
- */
-function createPantry(pantryName) {
-  pantryStore.createPantry(pantryName);
-}
-//
+      </View>
+    </RNModal>
+  )
+})
 
 export const PantryCreator = (props, ref) => {
   const inputRef = useRef();
@@ -331,16 +267,16 @@ export const PantryCreator = (props, ref) => {
           />
         </Col>
         <Col flex={1}>
-          <Button onPress={() => {
+          <LazyButton onPress={async () => {
               const pantryName = inputRef.current.getValue();
-              createPantry(pantryName);
               props?.onSubmit({
                 id: parseInt(Math.random() * 1e9),
                 pantryName
               });
+              await pantryStore.createPantry(pantryName);
             }}>
             Crear
-          </Button>
+          </LazyButton>
         </Col>
       </Row>
     </View>
@@ -356,141 +292,99 @@ const ArticlesListItemInput = forwardRef(({item, ...props}, ref) => {
           ? <TextBox {...props} onBlur={() => {
               props?.onBlur();
               setShowing(false);
-            }} ref={ref} value={props?.defaultValue} style={{flex: 1}} />
+            }} ref={ref} style={{flex: 1}} />
           : <ArticleView style={{ flex: 1 }} isPressable centered onPress={ () => setShowing(true) } >
               <Text bold>{props.defaultValue}</Text>
             </ArticleView>
       }
     </Col>
   );
-})
+});
 
-function articleModifier (id, property, value) {
-  return logic.articlesList.modify(id, property, value);
-}
+export const DynamicArticlesListItem = (props) =>  {
+  const nameRef = createRef(null);
+  const priceRef = createRef(null);
+  const quantityRef = createRef(null);
 
-export class DynamicArticlesListItem extends Component  {
-  constructor({item, ...props}) {
-    super(props);
-    this.state = {
-      ...item,
-      visible: true,
+  const modify = useCallback((property, value) => {
+    if (!value) {
+      return;
     }
-    this.nameRef = useRef(null);
-    this.priceRef = useRef(null);
-    this.quantityRef = useRef(null);
-    this.unsubscribe = null;
-  }
-
-  subscribe() {
-    return logic.articlesList.addObserver(() => {
-      const change = logic.articlesList.lastChange;
-      if (change === null) {
-        return;
-      }
-      if (change.type === "modified") {
-        if (change.data.id !== data.id) {
-          return;
-        }
-        this.setState({
-          ...this.state,
-          ...data,
-        })
-      } 
-      if (change.type === "remove") {
-        if (change.data !== data.id) {
-          return;
-        }
-        this.setState({
-          ...this.state,
-          visible: false,
-        })
-      }
+    Object.defineProperty(props.data, property, {
+      value,
+      writable: true,
     });
-  }
+    props.onModify(props.data);
+  }, []);
 
-  componentDidMount() {
-    this.unsubscribe = this.subscribe();
-  }
-
-  componentWillUnmount() {
-    this.unsubscribe();
-  }
-
-  render() {
-    const props = this.props;
-    if (!this.state.visible) {
-      return null;
-    }
-    return (
-      <SwipeableListItem
-        style={{ 
-          height: 50,
-          borderRadius: sizes.m,
-          padding: sizes.s,
-          backgroundColor: colors.background,
-        }}
-        rightContent={props.swipeableRightContent}
-        leftContent={props.swipeableLeftContent}
-        rightColor={colors.danger}
-        leftColor={colors.secondary}
-        rightPress={() => props?.swipeableRightFunction(this.state.id)}
-        leftPress={() => props?.swipeableLeftFunction(this.state.id)}
-        >
-        <ArticleRow>
-          <Col flex={2}>
-            <ArticlesListItemInput
-              autoFocus
-              onBlur={() => articleModifier(this.state.id, "name", this.nameRef.current.getValue())}
-              placeholder="Nombre"
-              defaultValue={data.name}
-              ref={this.nameRef}
-             />
-          </Col>
-          <Col flex={1}>
-            <ArticlesListItemInput
-              autoFocus
-              onBlur={ () => articleModifier(this.state.id, "price", this.priceRef.current.getValue()) }
-              placeholder="💵"
-              defaultValue={fixed(data.price)}
-              ref={this.priceRef}
-             />
-          </Col>
-          <Col flex={1}>
-            <ArticlesListItemInput
-              autoFocus
-              onBlur={ () => articleModifier(this.state.id, "quantity", this.quantityRef.current.getValue()) }
-              placeholder="5️⃣"
-              defaultValue={fixed(data.quantity)}
-              ref={this.quantityRef}
-             />
-          </Col>
-          <Col flex={1}>
-            <ArticleView>
-              <Text muted >{ fixed(this.state.quantity * this.state.price) }</Text>
-            </ArticleView>
-          </Col>
+  return (
+    <SwipeableListItem
+      style={{ 
+        height: 50,
+        borderRadius: sizes.m,
+        padding: sizes.s,
+        backgroundColor: colors.background,
+      }}
+      rightContent={props.swipeableRightContent}
+      leftContent={props.swipeableLeftContent}
+      rightColor={colors.danger}
+      leftColor={colors.secondary}
+      rightPress={() => props?.swipeableRightFunction(props.data)}
+      leftPress={() => props?.swipeableLeftFunction(props.data)}
+      >
+      <ArticleRow>
+        <Col flex={2}>
+          <ArticlesListItemInput
+            autoFocus
+            onBlur={() => modify("name", nameRef.current.getValue())}
+            placeholder="Nombre"
+            defaultValue={props.data.name}
+            ref={nameRef}
+            />
+        </Col>
+        <Col flex={1}>
+          <ArticlesListItemInput
+            autoFocus
+            onBlur={ () => modify("price", priceRef.current.getValue()) }
+            placeholder="💵"
+            keyboardType="number-pad"
+            defaultValue={fixed(props.data.price)}
+            ref={priceRef}
+            />
+        </Col>
+        <Col flex={1}>
+          <ArticlesListItemInput
+            autoFocus
+            onBlur={ () => modify("quantity", quantityRef.current.getValue()) }
+            placeholder="5️⃣"
+            keyboardType="number-pad"
+            defaultValue={fixed(props.data.quantity)}
+            ref={quantityRef}
+            />
+        </Col>
+        <Col flex={1}>
+          <ArticleView>
+            <Text muted >{ fixed(props.data.total) }</Text>
+          </ArticleView>
+        </Col>
+    </ArticleRow>
+    {
+      /**
+      <ArticleRow>
+        <DateTimePicker 
+          label="Caducidad"
+          onChange={(value) => props.itemModifier(item.id, "expirationDate", value)}
+          ref={expirationDateRef} 
+          initialValue={item.expirationDate}
+          style={{
+            elevation: 0,
+            padding: 0,
+          }}/>
       </ArticleRow>
-      {
-        /**
-        <ArticleRow>
-          <DateTimePicker 
-            label="Caducidad"
-            onChange={(value) => props.itemModifier(item.id, "expirationDate", value)}
-            ref={expirationDateRef} 
-            initialValue={item.expirationDate}
-            style={{
-              elevation: 0,
-              padding: 0,
-            }}/>
-        </ArticleRow>
-         */
-      }
-    </SwipeableListItem>
-  )
-  }
-
-}
+        */
+    }
+  </SwipeableListItem>
+)}
 
 const styles = StyleSheet.create({
   modalView: {

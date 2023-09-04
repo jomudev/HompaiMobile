@@ -7,6 +7,10 @@ export default class List extends Observable {
     this.lastChange = null;
   }
 
+  notify() {
+    super.notify();
+  }
+
   /**
    * @param {Array} list 
    */
@@ -15,9 +19,9 @@ export default class List extends Observable {
     this.list = list;
     this.lastChange = {
       type: "set",
-      data: null,
+      data: list,
     };
-    super.notify();
+    this.notify();
   }
 
   add(item) {
@@ -26,24 +30,21 @@ export default class List extends Observable {
       type: "add",
       data: item,
     };
-    super.notify();
+    this.notify();
   }
   
   modify(id, property, value) {
-    this.list = this.list.map((article) => {
-      if (article?.id === id) {
-        article = {
-          ...article,
-          [property]: value,
-        };
+    const modifiedList = this.list.map((article) => {
+      if (article.id === id) {
+        article[property] = value;
         this.lastChange = {
           type: "modified",
           data: article,
         };
-        return article;
       }
+      return article;
     });
-    super.notify();
+    this.list = modifiedList;
   }
 
   remove(id) {
@@ -52,10 +53,19 @@ export default class List extends Observable {
       type: "remove",
       data: id,
     };
-    super.notify();
+    this.notify();
   }
 
   find(id) {
     return this.list.find(item => item.id === id);
+  }
+
+  clear() {
+    this.list = [];
+    this.lastChange = {
+      type: "clear",
+      data: null,
+    };
+    this.notify();
   }
 }

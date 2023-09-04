@@ -14,6 +14,6 @@ export default class Observable {
   }
 
   notify() {
-    this.observers.forEach((observer) => observer());
+    this.observers.forEach((observer) => observer(this));
   }
 }

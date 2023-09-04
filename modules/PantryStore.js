@@ -3,6 +3,7 @@ import Axion from './Axion';
 import Storage from './Storage';
 const storage = Storage.getInstance();
 const axion = Axion.getInstance();
+
 export default class PantryStore {
   static instance = null;
   static getInstance() {
@@ -12,8 +13,8 @@ export default class PantryStore {
     return this.instance;
   }
 
-  async createBatch(pantryId, articles) {
-    await axion.post("/articles/createBatch", { pantryId, articles });
+  async createBatch(batch) {
+    await axion.post("/articles/createBatch", batch);
   }
 
   async getBatches(pantryId) {
@@ -44,7 +45,13 @@ export default class PantryStore {
   }
 
   async getArticlesActualList() {
-    return await storage.get("articleActualList") || [];
+    let articles = await storage.get("articleActualList") || [];
+    articles = articles.map(article => new Article(article.id, article.name, article.price, article.quantity));
+    return articles;
+  }
+
+  async setArticlesActualList(list) {
+    await storage.store("articleActualList", list);
   }
 
   async getArticles() {
