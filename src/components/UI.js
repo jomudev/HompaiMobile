@@ -321,6 +321,7 @@ export const TextBox = forwardRef((props, ref) => {
 export const SectionsList = (props) => {
   return (
     <FlatList 
+      style={{ paddingTop: sizes.m }}
       ListHeaderComponent={props?.header}
       data={props.sections}
       renderItem={({item, index}) => <View key={index} style={{width: '100%'}}>{item}</View>}

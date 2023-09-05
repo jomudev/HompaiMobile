@@ -133,7 +133,7 @@ export const ArticlesList = (props) => {
 }
 
 export const ArticlesListTotal = (props) => {
-  return <Heading style={{ marginTop: sizes.l }} centered size="l" muted > 💰 { fixed(props.total) } ({ props.quantity })</Heading>;
+  return <Heading centered size="l" muted > 💰 { fixed(props.total) } ({ props.quantity })</Heading>;
 }
 
 export const PantrySelector = (props) => {
@@ -191,7 +191,7 @@ export const ArticlesFooter = (props) => {
   }, []);
 
   return (
-      <View style={{backgroundColor: "none", display: hidden ? "none" : "flex"}}>
+      <View style={{paddingBottom: 60, backgroundColor: "none", display: hidden ? "none" : "flex"}}>
         <Button 
           style={{
             marginTop: sizes.m,
@@ -203,7 +203,7 @@ export const ArticlesFooter = (props) => {
           onPress={props.clearList}>
           🧹 Limpiar Lista
         </Button>
-        <LazyButton
+        {/**<LazyButton
           style={{
             marginTop: sizes.m,
             width: '50%',
@@ -221,7 +221,7 @@ export const ArticlesFooter = (props) => {
           }}
           >
           📃 Guardar Lista
-        </LazyButton>
+        </LazyButton> */}
       </View>)
 }
 
