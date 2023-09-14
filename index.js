@@ -1,17 +1,5 @@
 import { registerRootComponent } from 'expo';
 import App from './App';
-const env = process.env;
-import { GoogleSignin } from '@react-native-google-signin/google-signin';
-import messaging from '@react-native-firebase/messaging';
-
-GoogleSignin.configure({
-  webClientId: env.FB_WEB_CLIENT_ID || "926926409859-spfdfdqoarff6itj9lqau5uqj4h8orte.apps.googleusercontent.com",
-  offlineAccess: false,
-});
-
-messaging().setBackgroundMessageHandler(async remoteMessage => {
-  console.log('Message handled in the background!', remoteMessage);
-});
 
 window.fixed = (value) => isNaN(value) ? "0.00" : parseFloat(value).toFixed(2);
 window.localeDate = (date) => {
