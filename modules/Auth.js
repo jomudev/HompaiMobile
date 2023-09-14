@@ -1,5 +1,6 @@
 import Auth from '@react-native-firebase/auth';
 import { GoogleSignin, statusCodes } from '@react-native-google-signin/google-signin';
+import { ToastAndroid } from 'react-native';
 
 export default class AppAuth {
 
@@ -13,32 +14,35 @@ export default class AppAuth {
   }
   
   async signInWithGoogle () {
-    try {
-      await GoogleSignin.hasPlayServices({ showPlayServicesUpdateDialog: true });
-    } catch (err) {
-      console.error(err);
-      throw new Error("Servicios de Google Play no disponibles");
+    const hasPlayServices = await GoogleSignin.hasPlayServices({ showPlayServicesUpdateDialog: true });
+
+    if (!hasPlayServices) {
+      throw new Error("Los servicios de Google Play no están disponibles");
     }
+
     var token;
-    try {
-      let { idToken } = await GoogleSignin.signIn();
-      token = idToken;
-    } catch (err) {
-      console.error(err);
-      if (err.code === statusCodes.SIGN_IN_CANCELLED) {
-        throw new Error("Has cancelado el inicio de sesión");
-        return;
-      }
-      if (err.code === statusCodes.PLAY_SERVICES_NOT_AVAILABLE) {
-        throw new Error("Los servicios de google play no están disponibles.");
-        return;
-      }
+    let { idToken } = await GoogleSignin.signIn();
+    token = idToken;
+
+    if (!token) {
+      throw new Error("No existe un token válido para esta sesión");
     }
+
+    const googleCredential = Auth.GoogleAuthProvider.credential(token);
+    if (!googleCredential) {
+      throw new Error("No existen credenciales validas para esta sesion");
+    }
+
+    console.log(`
+      PlayServices Available: ${hasPlayServices},
+      Token: ${token},
+      Credentials: ${JSON.stringify(googleCredential)},
+    `);
+    
     try {
-      const googleCredential = Auth.GoogleAuthProvider.credential(token);
       return Auth().signInWithCredential(googleCredential);
     } catch(err) {
-      console.error(err);
+      ToastAndroid.show(err, ToastAndroid.LONG);
     }
   }
 

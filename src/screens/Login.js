@@ -3,6 +3,7 @@ import { ToastAndroid } from 'react-native';
 import { Layout, Container, Button, Heading } from '../components/UI';
 import auth from '../../modules/Auth';
 const Auth = auth.getInstance();
+
 const signin = async () => {
   try {
     await Auth.signInWithGoogle();

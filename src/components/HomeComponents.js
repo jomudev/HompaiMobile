@@ -225,6 +225,19 @@ export const ArticlesFooter = (props) => {
       </View>)
 }
 
+export const HomeFloatingMenu = ({ methods, ...props }) => {
+  return (
+    <FloatingMenu>
+      <FloatingButton onPress={() => methods.clearList()} >
+        <Text>🧹</Text>
+      </FloatingButton>
+      <FloatingButton onPress={() => methods.clearList()} >
+        <Text>📝</Text>
+      </FloatingButton>
+    </FloatingMenu>
+  );
+};
+
 export const Modal = forwardRef((props, ref) => {
   const [visible, setVisible] = useState(false);
 

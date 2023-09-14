@@ -7,23 +7,10 @@ import Auth from '../../modules/Auth';
 const auth = Auth.getInstance();
 
 export default function (props) {
-  const [state, setState] = useState({
-    user: auth.currentUser,
-  });
-
-  useEffect(() => {
-    auth.onAuthStateChanged(async (user) => {
-      setState({user});
-    });
-  }, []);
 
   return (
     <NavigationContainer>
-      {
-        state.user
-          ? <MainRouter />
-          : <Login />
-      }
+      <MainRouter />
     </NavigationContainer>
   );
 }

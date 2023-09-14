@@ -20,7 +20,6 @@ export default function MainRouter () {
             paddingTop: 24,
           },
           title: "Crear Lista",
-          headerLeft: () => <HeaderLeft/>,
         }}
         component={Home} 
         />

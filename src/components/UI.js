@@ -330,6 +330,12 @@ export const SectionsList = (props) => {
     )
 }
 
+export const FloatingMenu = (props) => {
+  return (
+    <View style={styles.floatingMenu}>{ props.children }</View>
+  );
+}
+
 export const DataList = (props) => {
   return (
     <FlatList 
@@ -363,7 +369,21 @@ export const styles = StyleSheet.create({
   },
   containerFluid: {
     flex: 1,
+  }, 
+  floatingMenu: {
+    backgroundColor: 'transparent',
+    position: "absolute",
+    alignItems: 'center',
+    justifyContent: 'center',
+    bottom: sizes.l,
+    left: sizes.l,
   },
+  floatingButton: {
+    paddingVertical: sizes.l,
+    paddingHorizontal: sizes.s,
+    elevation: sizes.m,
+    backgroundColor: colors.primary,
+  },  
   button: {
     paddingVertical: 8,
     paddingHorizontal: 16,
