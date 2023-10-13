@@ -1,27 +1,20 @@
-import Article from '../src/objects/Article';
+import ArticleBuilder from '../src/objects/ArticleBuilder';
 import Axion from './Axion';
 import Storage from './Storage';
 const storage = Storage.getInstance();
 const axion = Axion.getInstance();
 
 export default class PantryStore {
-  static instance = null;
-  static getInstance() {
-    if (this.instance === null) {
-      this.instance = new PantryStore();
-    }
-    return this.instance;
-  }
 
-  async createBatch(batch) {
+  static async createBatch(batch) {
     await axion.post("/articles/createBatch", batch);
   }
 
-  async getBatches(pantryId) {
+  static async getBatches(pantryId) {
     return axion.get(`/articles/getBatches/${pantryId}`) || [];
   }
 
-  async getPantries() {
+  static async getPantries() {
     var pantries = [];
     try {
       const newPantries = await axion.get("/articles/pantries");
@@ -40,35 +33,35 @@ export default class PantryStore {
     return pantries;
   }
 
-  async createPantry(pantryName) {
+  static async createPantry(pantryName) {
     return await axion.post("/articles/createPantry", { pantryName });
   }
 
-  async getArticlesActualList() {
+  static async getArticlesActualList() {
     let articles = await storage.get("articleActualList") || [];
-    articles = articles.map(article => new Article(article.id, article.name, article.price, article.quantity));
+    articles = articles.map(article => ArticleBuilder.createLocalArticle(article));
     return articles;
   }
 
-  async setArticlesActualList(list) {
+  static async setArticlesActualList(list) {
     await storage.store("articleActualList", list);
   }
 
-  async getArticles() {
+  static async getArticles() {
     let articles = await axion.get("/articles") || [];
-    articles = articles.map(article => new Article(article.id, article.name, article.price, article.quantity));
+    articles = articles.map(article => ArticleBuilder.createArticle(article));
     return articles;
   }
 
-  async getBatch(batchId) {
+  static async getBatch(batchId) {
     return await axion.get(`/articles/getBatch/${batchId}`);
   }
 
-  async deleteBatch(batchId) {
+  static async deleteBatch(batchId) {
     await axion.post(`/articles/deleteBatch`, { batchId });
   }
 
-  async deleteArticle(articleId) {
+  static async deleteArticle(articleId) {
     await axion.post("/articles/deleteArticle", { articleId });
   }
 }

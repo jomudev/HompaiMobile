@@ -2,14 +2,14 @@ import React, { useEffect, useState } from 'react';
 import { Layout, Text, PressableLink, View } from '../components/UI';
 import PantryStore from '../../modules/PantryStore';
 import sizes from '../../res/sizes';
-const store = PantryStore.getInstance();
+
 
 export default function Pantries (props) {
   const [pantries, setPantries] = useState([]);
 
   useEffect(() => {
     async function fetchData() {
-      const pantries = await store.getPantries();
+      const pantries = await PantryStore.getPantries();
       setPantries(pantries);
     }
     fetchData();

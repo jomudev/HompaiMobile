@@ -1,4 +1,4 @@
-import { forwardRef, memo, useRef, useState, useImperativeHandle } from 'react';
+import { forwardRef, useRef, useState, useImperativeHandle } from 'react';
 import { 
   View as RNView, 
   Text as RNText, 
@@ -7,6 +7,7 @@ import {
   TextInput, 
   FlatList,
   ActivityIndicator,
+  SafeAreaView,
   ScrollView,
  } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
@@ -16,6 +17,12 @@ import { DateTimePickerAndroid } from '@react-native-community/datetimepicker';
 import {Picker} from '@react-native-picker/picker';
 import { useLinkProps } from '@react-navigation/native';
 import sizes from '../../res/sizes';
+import { Dimensions } from 'react-native';
+
+const { width, height } = Dimensions.get("window");
+const windowWidth = width;
+const windowHeight = height;
+
 
 export const ListPicker = forwardRef((props, ref) => {
   const [selectedValue, setSelectedValue] = useState(props.data[0]);
@@ -109,6 +116,7 @@ export const SwipeableListItem = (props) => {
       {...props}
       style={{borderRadius: sizes.m, ...props.style}}
       containerStyle={{padding: 0, alignItems: 'center', borderRadius: sizes.m, justifyContent: 'center', height: '100%', ...props.containerStyle}}
+
       rightContent={(reset) => <SwipeableButton color={props.rightColor} onPress={() => {
           reset();
           props?.rightPress();
@@ -174,17 +182,17 @@ export const Layout = (props) => {
 
 export const MinimalTextBox = forwardRef((props, ref) => <TextInput {...props} style={styles.minimalTextBox} ref={ref} />)
 
-export const Row = (props) => {
+export const Row = ({ flex, centeredAll, onPress, isPressable, gap, ...props}) => {
   return (
     <View 
-      isPressable={props.isPressable} 
-      onPress={props.onPress} 
-      centered={props.centeredAll || "horizontal"} 
+      isPressable={isPressable} 
+      onPress={onPress} 
+      centered={centeredAll || "horizontal"} 
       style={{ 
         flexDirection: 'row', 
         ...props.style, 
-        ...props.flex && { flex: props.flex },
-        ...props.gap && { gap: props.gap },
+        ...flex && { flex },
+        ...gap && { gap },
         }}>
       { props.children }
     </View>
@@ -211,14 +219,14 @@ export const Container = (props)  => {
   );
 }
 
-export const Button = (props) => {
+export const Button = ({onPress, ...props}) => {
   return (
     <Pressable style={{
       ...styles.button, 
       ...props.style,
-      ...props.muted && { backgroundColor: 'none', elevation: 0 },
+      ...props.muted && { backgroundColor: 'none' },
       ...props.width && { width: props.width }, 
-      }} onPress={props.onPress} >
+      }} onPress={onPress} >
       <Text {...props.textProps} style={{...styles.buttonText, ...props.textProps?.style}} color={props.textColor}>
         { props.children }
       </Text>
@@ -226,23 +234,23 @@ export const Button = (props) => {
   );
 }
 
-export const LazyButton = (props) => {
+export const LazyButton = ({ onPress, textStyle, textColor, children, style}) => {
   const [loading, setLoading] = useState(false);
 
   const handlePress = async () => {
     setLoading(true);
-    await props.onPress()
+    await onPress()
     setLoading(false);
   }
 
   return (
-    <Pressable style={{...styles.button, ...props.style}} onPress={handlePress}>
+    <Pressable style={{...styles.button, ...style}} onPress={handlePress}>
       {
         loading ? 
           <LazyLoading />
           : (
-            <Text style={{...styles.buttonText, ...props.textStyle}} color={props.textColor}>
-              { props.children }
+            <Text style={{...styles.buttonText, ...textStyle}} color={textColor}>
+              { children }
             </Text>
           )
       }
@@ -280,14 +288,15 @@ export const Text = (props) => {
   );
 }
 
-export const Heading = (props) => {
+export const Heading = ({flex, size , ...props}) => {
   return (
     <Text 
       style={{
+        ...props.style,
         ...props.centered ? { textAlign: 'center'} : null,
         ...styles.heading, 
-        fontSize: textSizes(props.size) || textSizes("xl"), 
-        ...props.style}} 
+        ...flex && { flex },
+        fontSize: textSizes(size) || textSizes("xl")}} 
         {...props}
          >
       { props.children }
@@ -295,28 +304,30 @@ export const Heading = (props) => {
   );
 }
 
-export const TextBox = forwardRef((props, ref) => {
-  const [value, setValue] = useState(undefined);
-  let inputRef = useRef(null);
-  useImperativeHandle(ref, () => {
-    return ({
-      getValue: () => value,
-      clear: () => setValue(""),
-      focus: () => inputRef.current.focus(),
-      setValue: (value) => setValue(value),
-  })});
+export const TextBox = forwardRef(function TextBox(props, ref) {
+  const value = useRef(props.value);
+  const inputRef = useRef();
+  const createHandle = () => ({
+    getValue: () => value.current,
+    focus: () => inputRef.current.focus(),
+    clear: () => inputRef.current.clear(),
+  });
+  useImperativeHandle(ref, createHandle, []);
+  
+  function handleOnChangeText(text) {
+    props.onChangeText && props.onChangeText(text); 
+    value.current = text;
+  }
 
   return (
-      <TextInput
-        {...props}
-        defaultValue={props.defaultValue}
-        onChangeText={setValue}
-        ref={inputRef}
-        value={value}
-        style={{...styles.minimalTextBox, fontSize: props.textSize || 12, width: '100%'}}
-        />
-  )
-})
+    <TextInput 
+      {...props}
+      ref={inputRef} 
+      onChangeText={handleOnChangeText} 
+      style={{ ...props.style, ...styles.minimalTextBox }} 
+      />
+    )
+});
 
 export const SectionsList = (props) => {
   return (
@@ -330,10 +341,23 @@ export const SectionsList = (props) => {
     )
 }
 
-export const FloatingMenu = (props) => {
+export const FAB = ({ actions, ...props }) => {
   return (
-    <View style={styles.floatingMenu}>{ props.children }</View>
+    <SafeAreaView style={styles.FAB}>
+        { props.children }
+      <View style={styles.FABContainer}>
+        { actions.map(({ value, action }) => <FABButton key={value} action={action} value={value} />) }
+      </View>
+    </SafeAreaView>
   );
+}
+
+export const FABButton = ({action, value}) => {
+  return (
+    <Pressable onPress={action} style={styles.FABButton}>
+      <Text>{ value }</Text>
+    </Pressable>
+  )
 }
 
 export const DataList = (props) => {
@@ -369,21 +393,31 @@ export const styles = StyleSheet.create({
   },
   containerFluid: {
     flex: 1,
-  }, 
-  floatingMenu: {
-    backgroundColor: 'transparent',
-    position: "absolute",
-    alignItems: 'center',
-    justifyContent: 'center',
-    bottom: sizes.l,
-    left: sizes.l,
   },
-  floatingButton: {
-    paddingVertical: sizes.l,
-    paddingHorizontal: sizes.s,
-    elevation: sizes.m,
+  FAB: {
+    flex: 1,
+  },
+  FABContainer: {
+    position: 'absolute',
+    right: 0,
+    bottom: 0,
+    maxWidth: windowWidth / 4,
+    display: 'flex',
+    flexDirection: 'column',
+    alignItems: 'center',
+    padding: sizes.s,
+    justifyContent: 'center',
+  },
+  FABButton: {
+    width: '90%',
+    height: 60,
+    borderRadius: sizes.m,
+    elevation: sizes.s,
     backgroundColor: colors.primary,
-  },  
+    alignItems: 'center',
+    marginVertical: sizes.s,
+    justifyContent: 'center',
+  },
   button: {
     paddingVertical: 8,
     paddingHorizontal: 16,
@@ -391,7 +425,6 @@ export const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: colors.primary,
-    elevation: sizes.xl,
     shadowOpacity: 0.01,
     borderRadius: sizes.m,
   },
@@ -402,6 +435,7 @@ export const styles = StyleSheet.create({
   },
   minimalTextBox: {
     height: '100%',
+    width: '100%',
     borderRadius: sizes.m,
     textAlign: 'center',
     backgroundColor: colors.secondary,

@@ -1,7 +1,10 @@
 import { registerRootComponent } from 'expo';
 import App from './App';
 
-window.fixed = (value) => isNaN(value) ? "0.00" : parseFloat(value).toFixed(2);
+const lang = navigator.language
+
+globalThis.currency = (value) => parseFloat(value).toLocaleString(lang, { style: 'currency', currency: 'HND'});
+globalThis.quantify = (value) => parseFloat(value, 10).toLocaleString();
 window.localeDate = (date) => {
   date = new Date(date);
   const lang = 'es-ES';
@@ -24,7 +27,6 @@ window.localeDate = (date) => {
     }),
   }
 }
-
 
 // registerRootComponent calls AppRegistry.registerComponent('main', () => App);
 // It also ensures that whether you load the app in Expo Go or in a native build,

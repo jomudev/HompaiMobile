@@ -1,29 +1,15 @@
-import Observable from '../interfaces/Observable';
-import PantryStore from '../../modules/PantryStore';
-const pantry = PantryStore.getInstance();
 
-export default class Batch extends Observable {
-  constructor(articles, pantry) {
-    super();
+
+export default class ArticlesCategory {
+  constructor(name, articles) {
+    this.name = name;
     this.articles = Array.from(articles || []);
     this.total = this.calculateArticlesTotal(articles);
-    this.pantryId = pantry;
-    this.change;
-  }
-
-  saveLocally() {
-    pantry.setArticlesActualList(this.articles);
   }
 
   setArticles(articles) {
     this.articles = articles;
     this.total = this.calculateArticlesTotal(articles);
-    this.change = {
-      type: "set",
-      data: articles,
-    };
-    super.notify();
-    this.saveLocally();
   }
 
   /**
@@ -32,11 +18,6 @@ export default class Batch extends Observable {
 
   set selectedPantry (pantry) {
     this.pantryId = pantry;
-    this.change = {
-      type: "setPantry",
-      data: pantry,
-    }
-    super.notify();
   }
 
   calculateArticlesTotal(articles) {
@@ -52,22 +33,11 @@ export default class Batch extends Observable {
 
   onChange(observer) {
     super.addObserver(observer);
-    this.change = {
-      type: "attachingObserver",
-      data: observer,
-    }
-    super.notify();
   }
 
   addArticle(article) {
     this.total += article.total;
     this.articles.unshift(article);
-    this.change = {
-      type: "add",
-      data: article,
-    };
-    super.notify();
-    this.saveLocally();
   }
 
   removeArticle(article) {
@@ -76,34 +46,17 @@ export default class Batch extends Observable {
     const articleIndex = this.articles.findIndex(findArticleIndexTestFunction);
     console.log(articleIndex);
     this.articles.splice(articleIndex, 1);
-    this.change = {
-      type: "remove",
-      data: article,
-    };
-    super.notify();
-    this.saveLocally();
   }
 
   modifyArticle(article) {
     const articleIndex = this.articles.findIndex((listArticle) => listArticle.id === article.id);
     this.articles.splice(articleIndex, 1, article);
     this.total = this.calculateArticlesTotal();
-    this.change = {
-      type: "modify",
-      data: article,
-    }
-    super.notify();
-    this.saveLocally();
   }
 
   clear() {
     this.articles = [];
     this.total = 0;
-    this.change = {
-      type: "clear",
-      data: null,
-    };
-    super.notify();
   }
 
   async save() {

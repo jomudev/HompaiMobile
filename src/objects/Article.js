@@ -25,4 +25,5 @@ export default class Article {
   get total() {
     return this.price * this.quantity;
   }
+
 }

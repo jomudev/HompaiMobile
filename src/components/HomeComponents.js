@@ -1,12 +1,12 @@
 import React,
   {
     useState, 
-    useEffect, 
-    createRef, 
+    useEffect,
     useRef, 
     forwardRef, 
     useImperativeHandle,
-    useCallback
+    useCallback,
+    memo
   } from 'react';
 import {
   Text, 
@@ -20,28 +20,32 @@ import {
   Button,
   Heading,
   ListPicker,
+  FAB,
   DateTimePicker,
   SectionsList
 } from './UI';
 import colors from '../../res/colors';
-import { ActivityIndicator, Modal as RNModal, StyleSheet, Alert } from 'react-native';
+import { ActivityIndicator, Modal as RNModal, StyleSheet, Alert, SectionList } from 'react-native';
 import sizes from '../../res/sizes';
-import PantryStore from '../../modules/PantryStore';
-import Article from '../objects/Article';
 import { Keyboard } from 'react-native';
-const pantryStore = PantryStore.getInstance();
+import ArticleBuilder from '../objects/ArticleBuilder';
+import { Info, Delete, MoneyBag, Numbers } from '../../res/icons';
+import { log } from '../../res/Debug';
+const CLEAR_TEXT = "";
 
 export const ArticleRow = (props) => (
   <Row centeredAll style={{ 
     gap: sizes.s,
     width: '100%',
-    ...props.style 
+    height: '100%',
   }}>
     { props.children }
   </Row>);
 
-export const ArticleView = (props) => (
-  <View {...props} style={{ 
+export const ArticleView = ({ showing, onPress, ...props}) => (
+  <View isPressable={true} centered onPress={onPress} style={{
+    flex: 1,
+    ...showing && { display: 'none' },
     borderRadius: 16,
     height: '100%',
     width: '100%',
@@ -51,89 +55,184 @@ export const ArticleView = (props) => (
   </View>
 );
 
-export const ArticleForm = (props) => {
-  let nameRef = useRef(null);
-  let priceRef = useRef(null);
-  let quantityRef = useRef(null);
+export const ArticleForm = ({ selectedCategory, onSubmit }) => {
+  const name = useRef("");
+  const price = useRef("");
+  const quantity = useRef("");
+  const nameRef = useRef();
+  const priceRef = useRef();
+  const quantityRef = useRef();
 
-  const submit = () => {
-    const article = new Article(
-      Math.random() * 1e9, 
-      nameRef.current?.getValue(), 
-      priceRef.current?.getValue(), 
-      quantityRef.current?.getValue()
-    );
+  useEffect(() => {
+    setTimeout(() => {
+      nameRef.current.focus();
+    }, 1);
+  });
 
-    props.onSubmit(article);
+  const cleanFields = () => {
+    name.current = CLEAR_TEXT;
+    price.current = CLEAR_TEXT;
+    quantity.current = CLEAR_TEXT;
     nameRef.current.clear();
     priceRef.current.clear();
     quantityRef.current.clear();
-    nameRef.current.focus();
+  }
+
+  const submitArticle = () => {
+    if (selectedCategory.trim() === "") {
+      selectedCategory = "Varios";
+    }
+    const article = ArticleBuilder.createLocalArticle(Math.random() * 1e9, name.current, price.current, quantity.current, selectedCategory);
+    onSubmit(article)
+    cleanFields();
   }
 
   return (
-  <View 
+  <Col 
     centered="horizontal" 
     style={{ 
-      width: '100%', 
-      height: 44, 
-      backgroundColor: colors.background, 
-      borderRadius: sizes.m, 
-      padding: sizes.xs 
+      width: '100%',
+      height: 100,
+      borderRadius: sizes.m,
       }}>
-    <ArticleRow>
-      <Col flex={2}>
-        <TextBox 
-          placeholder="Nombre del Artículo" 
-          ref={nameRef}
-          keyboardType="default"
-          onSubmitEditing={submit}
+      <Row style={{ height: 80}} gap={sizes.s}>
+        <Col flex={2}>
+          <TextBox 
+            placeholder="Nombre del Artículo"
+            ref={nameRef}
+            onChangeText={(text) => (name.current = text)}
+            keyboardType="default"
+            onSubmitEditing={submitArticle}
+              />
+        </Col>
+        <Col flex={1}>
+          <TextBox 
+            placeholder="💵" 
+            ref={priceRef}
+            keyboardType='number-pad'
+            onChangeText={(text) => (price.current = text)}
+            onSubmitEditing={submitArticle}
+              />
+        </Col>
+        <Col flex={1}>
+          <TextBox 
+            placeholder="5️⃣"
+            ref={quantityRef}
+            keyboardType='number-pad'
+            onChangeText={(text) => (quantity.current = text)}
+            onSubmitEditing={submitArticle}
             />
-      </Col>
-      <Col flex={1}>
-        <TextBox 
-          placeholder="💵" 
-          ref={priceRef}
-          valueType="float"
-          keyboardType='number-pad'
-          onSubmitEditing={submit}
-            />
-      </Col>
-      <Col flex={1}>
-        <TextBox 
-          placeholder="5️⃣" 
-          ref={quantityRef}
-          valueType="float"
-          keyboardType='number-pad'
-          onSubmitEditing={submit}
-          />
-      </Col>
-    </ArticleRow>
-    <ArticleRow>
+        </Col>
+      </Row>
       <Text centered muted size={sizes.xs}>Presiona ✔️ en el teclado para agregar el artículo</Text>
-    </ArticleRow>
-  </View>
+  </Col>
 )};
 
-export const ArticlesList = (props) => {
+export const ArticlesList = ({ articles, onModify, onDelete, onInfo }) => {
   return (
     <DataList
-      data={props.articles}
+      data={articles}
       render={({item, index}) => (
         <DynamicArticlesListItem
           data={item}
           key={index * Math.random()}
-          onModify={props.onModify}
-          swipeableLeftContent={() => <Text>ℹ️</Text>}
-          swipeableRightContent={() => <Text>🗑️</Text>}
-          swipeableLeftFunction={props.onInfo}
-          swipeableRightFunction={props.onDelete}
+          onModify={onModify}
+          swipeableLeftContent={() => <Info />}
+          swipeableRightContent={() => <Delete />}
+          swipeableLeftFunction={onInfo}
+          swipeableRightFunction={onDelete}
         />)}
     />)
 }
 
-export const ArticlesListTotal = (props) => {
-  return <Heading centered size="l" muted > 💰 { fixed(props.total) } ({ props.quantity })</Heading>;
+export const ArticlesListTotal = ({ total, quantity }) => {
+  return (
+    <Heading centered size="l" muted > 
+      <MoneyBag />
+      { currency(total)} 
+      {' '}
+      <Numbers />
+      {' '}
+      { quantity }
+      </Heading>
+  );
+}
+
+export const CategoriesCreator = ({ setSelectedCategory }) => {
+  const [category, setCategory] = useState("");
+  return (
+    <View style={{ height: 44, padding: sizes.xs}}>
+      <ArticleRow>
+        <Col flex={1} >
+          <TextBox 
+            placeholder="Categoría"
+            value={category}
+            onChangeText={setCategory}
+            onEndEditing={() => setSelectedCategory(category)}
+          />
+        </Col>
+      </ArticleRow>
+    </View>
+  );
+}
+
+export const CategoriesList = ({articles, selectedCategory, addArticle, removeArticle, modifyArticle}) => {
+  function groupBy(array = [], property) {
+    const reducer = function(groups, item) {
+      let title = item[property]
+      let group = groups[title] || (groups[title] = { title, data: []});
+      group.data.push(item);
+      return groups;
+    };
+    return array.reduce(reducer, {});
+  }
+
+  let list = groupBy(articles, 'category');
+  list = Object.keys(list).map(key => list[key]);
+  
+  return (
+    <SectionList 
+      removeClippedSubviews
+      initialNumToRender={10}
+      sections={list}
+      keyExtractor={(item, index) => item.name + item.price + item.quantity + index}
+      renderItem={({item}) => <DynamicArticlesListItem
+          data={item}
+          onModify={(article) => modifyArticle(article)}
+          swipeableRightContent={() => <Text>🗑️</Text>}
+          swipeableLeftFunction={() => {}}
+          swipeableRightFunction={removeArticle}
+        />}
+      renderSectionHeader={({section: {title}}) => (
+        <ArticlesSectionHeader>
+          <Heading size="xl" flex={1} >{ title }</Heading>
+          {
+            selectedCategory !== title ? 
+              (
+                <Modal buttonText="Agregar artículo" title={`Agregar artículo a ${title}`}>
+                  <ArticleForm onSubmit={addArticle} selectedCategory={title} />
+                </Modal>
+              ) : null
+          }
+        </ArticlesSectionHeader>
+      )}
+    />
+  );
+};
+
+export const ArticlesSectionHeader = (props) => {
+  return (
+    <View style={{
+      alignItems: 'center',
+      justifyContent: 'center',
+      flexDirection: 'row',
+      width: '100%',
+      paddingHorizontal: sizes.m,
+      paddingTop: sizes.m,
+    }}>
+      { props.children }
+    </View>
+  )
 }
 
 export const PantrySelector = (props) => {
@@ -155,28 +254,23 @@ export const PantrySelector = (props) => {
         style={{zIndex: 1, marginBottom: 16, marginTop: 16}}
         onChange={props.onChange} 
         data={pantries.map(pantry => pantry.name)}>
-        <Button textProps={{ numberOfLines: 1 }} onPress={() => modalRef.current.open()}>
-          Nueva Despensa
-        </Button>
-        <Modal ref={modalRef}>
-          <PantryCreator onSubmit={async (pantry) => {
-              setPantries(pantries.concat(pantry))
-            }}/>
+        <Modal ref={modalRef} buttonText="Nueva Despensa">
+          <PantryCreator title={"Agrega una nueva despensa"} onSubmit={(pantry) => setPantries(pantries.concat(pantry))}/>
         </Modal>
       </ListPicker>
     )
 }
 
-export const ArticlesHeader = (props) => {
+export const ArticlesHeader = ({ quantity, total, addArticle, selectedCategory }) => {
   return (
   <View style={{ width: '100%'}}>
     {/**<PantrySelector onChange={props.onSelectPantry} onLoad={props.onLoadPantries} /> */}
-    <ArticlesListTotal total={props.total} quantity={props.quantity} />
-    <ArticleForm onSubmit={props.onAddArticle} />
+    <ArticlesListTotal total={total} quantity={quantity} />
+    <ArticleForm onSubmit={addArticle} selectedCategory={selectedCategory} />
   </View>
 )}
 
-export const ArticlesFooter = (props) => {
+export const ArticlesFooter = ({clearList, ...props}) => {
   const [hidden, hide] = useState(false);
   const handleHide = useCallback(() => hide(true));
   const handleShow = useCallback(() => hide(false));
@@ -200,7 +294,7 @@ export const ArticlesFooter = (props) => {
             backgroundColor: colors.secondary,
             padding: sizes.m, 
           }}
-          onPress={props.clearList}>
+          onPress={clearList}>
           🧹 Limpiar Lista
         </Button>
         {/**<LazyButton
@@ -225,20 +319,22 @@ export const ArticlesFooter = (props) => {
       </View>)
 }
 
-export const HomeFloatingMenu = ({ methods, ...props }) => {
+export const HomeFAB = ({ clearArticles, ...props }) => {
   return (
-    <FloatingMenu>
-      <FloatingButton onPress={() => methods.clearList()} >
-        <Text>🧹</Text>
-      </FloatingButton>
-      <FloatingButton onPress={() => methods.clearList()} >
-        <Text>📝</Text>
-      </FloatingButton>
-    </FloatingMenu>
+    <FAB actions={[
+      {
+        value: '🧹',
+        action: clearArticles,
+      },
+    ]} >
+      {
+        props.children
+      }
+    </FAB>
   );
 };
 
-export const Modal = forwardRef((props, ref) => {
+export const Modal = forwardRef(({ title, buttonText, ...props}, ref) => {
   const [visible, setVisible] = useState(false);
 
   const imperativeMethods = () => ({
@@ -249,29 +345,57 @@ export const Modal = forwardRef((props, ref) => {
   useImperativeHandle(ref, imperativeMethods);
     
   return (
-    <RNModal 
-      visible={visible}
-      transparent
-      animationType='slide'
-      onRequestClose={() => imperativeMethods().close()}
-      >
-      <View style={styles.modalContainer}>
-        <View style={styles.modalView}>
-        {
-          props.children
-        }
+    <View style={{ flex: 1 }}>
+      <Button width="100%" onPress={() => setVisible(true)}>
+        <Text>{ buttonText }</Text>
+      </Button>
+      <RNModal 
+        visible={visible}
+        transparent
+        animationType='slide'
+        onRequestClose={() => imperativeMethods().close()}
+        >
+        <View style={styles.modalContainer}>
+          <View style={styles.modalView}>
+          <Heading centered style={{ marginBottom: sizes.m }}>{ title }</Heading>
+          {
+            props.children
+          }
+          </View>
         </View>
-      </View>
-    </RNModal>
+      </RNModal>
+    </View>
   )
 })
 
-export const PantryCreator = (props, ref) => {
+export const Creator = ({ title, onSubmit }) => {
   const inputRef = useRef();
 
   return (
     <View centered >
-      <Heading size="l" bold >Agrega una despensa</Heading>
+      <Heading size="l" bold >{ title }</Heading>
+      <Row gap={16} style={{ height: 40 }}>
+        <Col flex={1}>
+          <TextBox 
+            placeholder="Nombre"
+          />
+        </Col>
+        <Col flex={1}>
+          <LazyButton onPress={() => onSubmit && onSubmit(inputRef.current.getValue())}>
+            Crear
+          </LazyButton>
+        </Col>
+      </Row>
+    </View>
+  );
+}
+
+export const PantryCreator = (props) => {
+  const inputRef = useRef();
+
+  return (
+    <View centered >
+      <Heading size="l" bold >{ props.title }</Heading>
       <Row gap={16} style={{ height: 40 }}>
         <Col flex={1}>
           <TextBox 
@@ -296,88 +420,95 @@ export const PantryCreator = (props, ref) => {
   );
 }
 
-const ArticlesListItemInput = forwardRef(({item, ...props}, ref) => {
+const ArticlesListItemInput = forwardRef(({ defaultValue, formatter, placeholder, initialValue, item, ...props}, ref) => {
   const [showing, setShowing] = useState(false);
+  const showDefaultValue = (value) => formatter ? formatter(value) : value;
+
+  function showHandle() {
+    setShowing(true); 
+    setTimeout(() => {
+      ref.current.focus();
+    }, 250);
+  }
+
+  function submit()  {
+    showing && props?.onBlur();
+    setShowing(false);
+  }
+
   return (
-    <Col>
-      {
-        showing 
-          ? <TextBox {...props} onBlur={() => {
-              props?.onBlur();
-              setShowing(false);
-            }} ref={ref} style={{flex: 1}} />
-          : <ArticleView style={{ flex: 1 }} isPressable centered onPress={ () => setShowing(true) } >
-              <Text bold>{props.defaultValue}</Text>
-            </ArticleView>
-      }
-    </Col>
+    <Row style={{height: '100%'}}>
+      <ArticleView showing={showing} onPress={showHandle} >
+        <Text bold>{ showDefaultValue(defaultValue) }</Text>
+      </ArticleView>
+      <TextBox
+        selectTextOnFocus
+        placeholder={placeholder?.toString()} 
+        defaultValue={defaultValue?.toString()} 
+        onBlur={submit} ref={ref} style={{flex: 1, ...!showing && { display: 'none' }}} />
+    </Row>
   );
 });
 
-export const DynamicArticlesListItem = (props) =>  {
-  const nameRef = createRef(null);
-  const priceRef = createRef(null);
-  const quantityRef = createRef(null);
+export const DynamicArticlesListItem = function DynamicArticlesListItem({ data,  onModify, ...props}) {
+  const nameRef = useRef();
+  const priceRef = useRef();
+  const quantityRef = useRef();
 
-  const modify = useCallback((property, value) => {
-    if (!value) {
-      return;
-    }
-    Object.defineProperty(props.data, property, {
-      value,
-      writable: true,
-    });
-    props.onModify(props.data);
-  }, []);
+  function modify() {
+    const name = nameRef.current.getValue() || data.name;
+    const price = priceRef.current.getValue() || data.price;
+    const quantity = quantityRef.current.getValue() || data.quantity;
+    let modifiedArticle = ArticleBuilder.createLocalArticle(data.id, name, price, quantity, data.category);
+    onModify && onModify(modifiedArticle);
+  };
 
   return (
     <SwipeableListItem
       style={{ 
-        height: 50,
+        height: 80,
         borderRadius: sizes.m,
         padding: sizes.s,
         backgroundColor: colors.background,
       }}
-      rightContent={props.swipeableRightContent}
-      leftContent={props.swipeableLeftContent}
+      rightContent={props?.swipeableRightContent}
       rightColor={colors.danger}
       leftColor={colors.secondary}
-      rightPress={() => props?.swipeableRightFunction(props.data)}
-      leftPress={() => props?.swipeableLeftFunction(props.data)}
+      rightPress={() => props?.swipeableRightFunction(data)}
+      leftPress={() => props?.swipeableLeftFunction(data)}
       >
       <ArticleRow>
         <Col flex={2}>
           <ArticlesListItemInput
-            autoFocus
-            onBlur={() => modify("name", nameRef.current.getValue())}
+            onBlur={modify}
             placeholder="Nombre"
-            defaultValue={props.data.name}
+            defaultValue={data.name}
             ref={nameRef}
             />
         </Col>
         <Col flex={1}>
           <ArticlesListItemInput
-            autoFocus
-            onBlur={ () => modify("price", priceRef.current.getValue()) }
+            onBlur={modify}
             placeholder="💵"
             keyboardType="number-pad"
-            defaultValue={fixed(props.data.price)}
+            defaultValue={data.price}
+            formatter={currency}
             ref={priceRef}
             />
         </Col>
         <Col flex={1}>
           <ArticlesListItemInput
-            autoFocus
-            onBlur={ () => modify("quantity", quantityRef.current.getValue()) }
-            placeholder="5️⃣"
+            onBlur={modify}
+            placeholder={'🔢'}
+            formatter={quantify}
             keyboardType="number-pad"
-            defaultValue={fixed(props.data.quantity)}
+            defaultValue={data.quantity}
             ref={quantityRef}
             />
         </Col>
         <Col flex={1}>
           <ArticleView>
-            <Text muted >{ fixed(props.data.total) }</Text>
+            <Text muted >{ currency(data.total) }</Text>
           </ArticleView>
         </Col>
     </ArticleRow>
@@ -397,7 +528,7 @@ export const DynamicArticlesListItem = (props) =>  {
         */
     }
   </SwipeableListItem>
-)}
+)};
 
 const styles = StyleSheet.create({
   modalView: {

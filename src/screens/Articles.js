@@ -3,7 +3,6 @@ import { DataList, Heading, Layout, Text, Col, SwipeableListItem} from '../compo
 import PantryStore from '../../modules/PantryStore';
 import { ArticleRow, ArticleView } from '../components/HomeComponents';
 import colors from '../../res/colors';
-const pantry = PantryStore.getInstance();
 
 export const StaticArticleListItem = ({article, ...props}) => {
   return (
@@ -43,7 +42,7 @@ export default function Articles(props) {
 
   useEffect(() => {
     async function fetchArticles() {
-      const articles = await pantry.getArticles();
+      const articles = await PantryStore.getArticles();
       setState({ articles });
     }
     fetchArticles();

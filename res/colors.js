@@ -1,5 +1,6 @@
 export default {
     background: "white",
+    selected: 'RGB(40, 40, 240)',
     primary: "#F9DEDC",
     secondary: "#F5EFF7",
     text: "#222222",
