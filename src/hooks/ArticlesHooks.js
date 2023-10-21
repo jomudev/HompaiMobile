@@ -1,5 +1,7 @@
 import { useState, useRef, useEffect } from 'react';
 import PantryStore from '../../modules/PantryStore';
+import ArticleBuilder from '../objects/ArticleBuilder';
+import { log } from '../../res/Debug';
 
 const getTotal = (articles) => {
   let newTotal = articles.reduce((acc, article) => acc + article.total , 0);
@@ -11,10 +13,17 @@ export const useArticles = () => {
   const total = useRef(0);
   const quantity = useRef(0);
 
+  function setArticlesHandler(newArticles) {
+    newArticles = newArticles.map(article => ArticleBuilder.createLocalArticle({...article}));
+    setArticles(newArticles);
+    setTotal(getTotal(newArticles));
+    setQuantity(newArticles.length);
+  }
+
   function setTotal(value) {
     total.current = value
   }
-
+ 
   function setQuantity(value) {
     quantity.current = value;
   }
@@ -48,8 +57,12 @@ export const useArticles = () => {
   }
 
   useEffect(() => {
-    PantryStore.getArticlesActualList().then((articles) => setArticles(articles));
-  },[]);
+    PantryStore.getArticlesActualList().then(setArticlesHandler);
+  }, []);
+
+  useEffect(() => {
+    PantryStore.setArticlesActualList(articles);
+  }, [articles]);
 
   return { 
     articles,

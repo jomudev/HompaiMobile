@@ -38,9 +38,7 @@ export default class PantryStore {
   }
 
   static async getArticlesActualList() {
-    let articles = await storage.get("articleActualList") || [];
-    articles = articles.map(article => ArticleBuilder.createLocalArticle(article));
-    return articles;
+    return (await storage.get("articleActualList")).map(article => ArticleBuilder.createLocalArticle({...article})) || [];
   }
 
   static async setArticlesActualList(list) {
@@ -49,7 +47,7 @@ export default class PantryStore {
 
   static async getArticles() {
     let articles = await axion.get("/articles") || [];
-    articles = articles.map(article => ArticleBuilder.createArticle(article));
+    articles = articles.map(article => ArticleBuilder.createArticle({...article}));
     return articles;
   }
 

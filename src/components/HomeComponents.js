@@ -82,7 +82,13 @@ export const ArticleForm = ({ selectedCategory, onSubmit }) => {
     if (selectedCategory.trim() === "") {
       selectedCategory = "Varios";
     }
-    const article = ArticleBuilder.createLocalArticle(Math.random() * 1e9, name.current, price.current, quantity.current, selectedCategory);
+    const article = ArticleBuilder.createLocalArticle({
+      id: Math.random() * 1e9, 
+      name: name.current, 
+      price: price.current, 
+      quantity: quantity.current, 
+      category: selectedCategory
+    });
     onSubmit(article)
     cleanFields();
   }
@@ -177,6 +183,13 @@ export const CategoriesCreator = ({ setSelectedCategory }) => {
 }
 
 export const CategoriesList = ({articles, selectedCategory, addArticle, removeArticle, modifyArticle}) => {
+  const ArticlesAdderModalRef = useRef();
+
+  const submitHandler = (article) => {
+    addArticle(article);
+    ArticlesAdderModalRef.current.close();
+  }
+
   function groupBy(array = [], property) {
     const reducer = function(groups, item) {
       let title = item[property]
@@ -209,8 +222,8 @@ export const CategoriesList = ({articles, selectedCategory, addArticle, removeAr
           {
             selectedCategory !== title ? 
               (
-                <Modal buttonText="Agregar artículo" title={`Agregar artículo a ${title}`}>
-                  <ArticleForm onSubmit={addArticle} selectedCategory={title} />
+                <Modal ref={ArticlesAdderModalRef} buttonText="Agregar artículo" title={`Agregar artículo a ${title}`}>
+                  <ArticleForm onSubmit={submitHandler} selectedCategory={title} />
                 </Modal>
               ) : null
           }
