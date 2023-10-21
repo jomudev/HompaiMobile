@@ -2,6 +2,7 @@ import { useState, useRef, useEffect } from 'react';
 import PantryStore from '../../modules/PantryStore';
 import ArticleBuilder from '../objects/ArticleBuilder';
 import { log } from '../../res/Debug';
+import { Alert } from 'react-native';
 
 const getTotal = (articles) => {
   let newTotal = articles.reduce((acc, article) => acc + article.total , 0);
@@ -28,10 +29,22 @@ export const useArticles = () => {
     quantity.current = value;
   }
 
-  const clearArticles = () => {
+  const clearArticlesHandler = () => {
     setArticles([]);
     setTotal(0);
     setQuantity(0);
+  }
+
+  function clearArticles() {
+    Alert.alert("Limpiar lista", "¿Deseas borrar todos los artículos?", [
+      {
+        text: "Sí",
+        onPress: clearArticlesHandler,
+      }, {
+        text: "No",
+        onPress: () => {},
+      }
+    ])
   }
 
   const unshiftArticle = (article) => Array.from([article, ...articles]);
