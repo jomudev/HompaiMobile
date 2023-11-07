@@ -16,9 +16,9 @@ export const useArticles = () => {
 
   function setArticlesHandler(newArticles) {
     newArticles = newArticles.map(article => ArticleBuilder.createLocalArticle({...article}));
-    setArticles(newArticles);
     setTotal(getTotal(newArticles));
     setQuantity(newArticles.length);
+    setArticles(newArticles);
   }
 
   function setTotal(value) {
