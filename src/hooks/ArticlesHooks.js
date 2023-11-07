@@ -30,9 +30,9 @@ export const useArticles = () => {
   }
 
   const clearArticlesHandler = () => {
-    setArticles([]);
     setTotal(0);
     setQuantity(0);
+    setArticles([]);
   }
 
   function clearArticles() {
@@ -50,23 +50,24 @@ export const useArticles = () => {
   const unshiftArticle = (article) => Array.from([article, ...articles]);
 
   const addArticle = (article) => {
+    PantryStore.saveArticleNameLocally(article.name);
     const newArticles = unshiftArticle(article);
-    setArticles(newArticles);
     setTotal(total.current + article.total);
     setQuantity(quantity.current + 1);
+    setArticles(newArticles);
   };
 
   const modifyArticle = (modifiedArticle) => {
     let newArray = articles.map(article => article.id === modifiedArticle.id ? modifiedArticle : article);
-    setArticles(newArray);
     setTotal(getTotal(newArray));
+    setArticles(newArray);
   }
 
   const removeArticle = (articleToRemove) => {
     let newArray = articles.filter(article => article.id !== articleToRemove.id);
-    setArticles(newArray);
     setTotal(total.current - articleToRemove.total);
     setQuantity(quantity.current - 1);
+    setArticles(newArray);
   }
 
   useEffect(() => {
