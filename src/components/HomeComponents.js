@@ -336,7 +336,7 @@ export const HomeFAB = ({ clearArticles, ...props }) => {
   return (
     <FAB actions={[
       {
-        value: '🧹',
+        value: '🧹 Limpiar',
         action: clearArticles,
       },
     ]} >
