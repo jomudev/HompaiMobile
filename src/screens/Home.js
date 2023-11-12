@@ -30,27 +30,23 @@ export default function Home () {
   return (
     <Layout>
       <HomeFAB clearArticles={clearArticles} >
-      <SectionsList 
-        sections={[
-          <CategoriesCreator 
-            category={selectedCategory} 
-            setSelectedCategory={setSelectedCategory} 
-            />,
-          <ArticlesHeader 
-            total={total} 
-            quantity={quantity} 
-            selectedCategory={selectedCategory} 
-            addArticle={(article) => addArticle(article)} 
-            />,
-          <CategoriesList
-            addArticle={addArticle}
-            selectedCategory={selectedCategory}
-            articles={articles} 
-            modifyArticle={modifyArticle} 
-            removeArticle={removeArticle} 
-            />,
-        ]}
-      />
+      <CategoriesCreator 
+        category={selectedCategory} 
+        setSelectedCategory={setSelectedCategory} 
+        />
+      <ArticlesHeader 
+        total={total} 
+        quantity={quantity} 
+        selectedCategory={selectedCategory} 
+        addArticle={(article) => addArticle(article)} 
+        />
+      <CategoriesList
+          addArticle={addArticle}
+          selectedCategory={selectedCategory}
+          articles={articles} 
+          modifyArticle={modifyArticle} 
+          removeArticle={removeArticle} 
+          />
       </HomeFAB>
     </Layout>
   );

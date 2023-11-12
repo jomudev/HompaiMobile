@@ -3,6 +3,7 @@ import PantryStore from '../../modules/PantryStore';
 import ArticleBuilder from '../objects/ArticleBuilder';
 import { log } from '../../res/Debug';
 import { Alert } from 'react-native';
+import { Modal } from '../components/HomeComponents';
 
 const getTotal = (articles) => {
   let newTotal = articles.reduce((acc, article) => acc + article.total , 0);
@@ -50,14 +51,19 @@ export const useArticles = () => {
   const unshiftArticle = (article) => Array.from([article, ...articles]);
 
   const addArticle = (article) => {
-    PantryStore.saveArticleNameLocally(article.name);
     const newArticles = unshiftArticle(article);
     setTotal(total.current + article.total);
     setQuantity(quantity.current + 1);
     setArticles(newArticles);
+    if (article.name && article.name.trim() !== '') {
+      PantryStore.saveArticleNameLocally(article.name);
+    }
   };
 
   const modifyArticle = (modifiedArticle) => {
+    if (!modifiedArticle.name) {
+      return null;
+    }
     let newArray = articles.map(article => article.id === modifiedArticle.id ? modifiedArticle : article);
     setTotal(getTotal(newArray));
     setArticles(newArray);

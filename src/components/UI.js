@@ -138,7 +138,7 @@ export const SwipeableListItem = (props) => {
   );
 }
 
-export const View = (props) => {
+export const View = ({style, isPressable, scrollable, ...props}) => {
   const alignments =  {
       true: {
         alignItems: 'center',
@@ -153,19 +153,21 @@ export const View = (props) => {
       false: {},
     }
     var Component = RNView;
-    if (props.isPressable) {
+    if (isPressable) {
       Component = Pressable;
     } 
-    if (props.scrollable) {
+    if (scrollable) {
       Component = ScrollView;
     }
   return (
-    <Component {...props} style={{
-      overflow: 'visible',
-      ...props.style,
-      width: "100%",
-      ...!props.scrollable && alignments[props.centered],
-      }}>
+    <Component {...props} style={[
+        style, 
+        {
+          overflow: 'visible', 
+          width: '100%'
+        }, 
+        !props.scrollable && alignments[props.centered]
+        ]}>
       { props.children }
     </Component>
     )
@@ -182,18 +184,23 @@ export const Layout = (props) => {
 
 export const MinimalTextBox = forwardRef((props, ref) => <TextInput {...props} style={styles.minimalTextBox} ref={ref} />)
 
-export const Row = ({ flex, centeredAll, onPress, isPressable, gap, ...props}) => {
+export const Row = ({ flex, style, centeredAll, onPress, isPressable, gap, ...props}) => {
+  const styles = StyleSheet.create({
+    row: {
+      flexDirection: 'row',
+    }
+  });
   return (
     <View 
       isPressable={isPressable} 
       onPress={onPress} 
       centered={centeredAll || "horizontal"} 
-      style={{ 
-        flexDirection: 'row', 
-        ...props.style, 
-        ...flex && { flex },
-        ...gap && { gap },
-        }}>
+      style={[
+        style,
+        styles.row,
+        flex && { flex },
+        gap && { gap },
+      ]}>
       { props.children }
     </View>
   );
@@ -270,16 +277,17 @@ export const textSizes = (size) => {
   return headingSizes[size] || 12;
 }
 
-export const Text = (props) => {
+export const Text = ({ muted, style, color, centered, centeredVertical, bold, size, ...props }) => {
   return (
     <RNText
-      style={{ 
-      ...props.centered ? { textAlign: 'center' } : null,
-      ...props.centeredVertical ? { textAlignVertical: 'center' } : null,
-        color: props.muted ? colors.textMuted : (colors[props.color] || props.color) || colors.text, 
-      ...props.bold ? { fontWeight: 'bold' } : null,
-      ...props.size && { fontSize: textSizes(props.size) }
-        }} 
+      style={[
+        centered ? { textAlign: 'center' } : null, 
+        centeredVertical ? { textAlignVertical: 'center' } : null,
+        { color: muted ? colors.textMuted : (colors[color] || color) || colors.text },
+        bold ? { fontWeight: 'bold' } : null,
+        { fontSize: textSizes(size) },
+        style,
+        ]} 
       {...props}
       numberOfLines={ props.numberOfLines || 1 }
        >
@@ -288,15 +296,16 @@ export const Text = (props) => {
   );
 }
 
-export const Heading = ({flex, size , ...props}) => {
+export const Heading = ({ centered, style, flex, size , ...props}) => {
   return (
     <Text 
-      style={{
-        ...props.style,
-        ...props.centered ? { textAlign: 'center'} : null,
-        ...styles.heading, 
-        ...flex && { flex },
-        fontSize: textSizes(size) || textSizes("xl")}} 
+      style={[ 
+        centered ? { textAlign: 'center'} : null, 
+        style,
+        styles.heading,
+        flex && { flex },
+        { fontSize: textSizes(size) || textSizes("xl") },
+        ]} 
         {...props}
          >
       { props.children }
@@ -379,6 +388,7 @@ export const styles = StyleSheet.create({
   layoutView: {
     height: '100%',
     width: '100%',
+    flex: 1,
     justifyContent: 'center',
     backgroundColor: colors.background,
   },

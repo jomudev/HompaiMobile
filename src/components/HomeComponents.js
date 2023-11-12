@@ -6,7 +6,6 @@ import React,
     forwardRef, 
     useImperativeHandle,
     useCallback,
-    memo
   } from 'react';
 import {
   Text, 
@@ -25,19 +24,20 @@ import {
   SectionsList
 } from './UI';
 import colors from '../../res/colors';
-import { ActivityIndicator, Modal as RNModal, StyleSheet, Alert, SectionList } from 'react-native';
+import { ActivityIndicator, Modal as RNModal, StyleSheet, Alert, SectionList, Pressable } from 'react-native';
 import sizes from '../../res/sizes';
 import { Keyboard } from 'react-native';
 import ArticleBuilder from '../objects/ArticleBuilder';
 import { Info, Delete, MoneyBag, Numbers } from '../../res/icons';
-import { log } from '../../res/Debug';
+import PantryStore from '../../modules/PantryStore';
+import { groupBy } from '../../res/utils';
+import { ARTICLES_NAMES_LIST } from '../constants/storage.constants';
 const CLEAR_TEXT = "";
 
 export const ArticleRow = (props) => (
   <Row centeredAll style={{ 
     gap: sizes.s,
-    width: '100%',
-    height: '100%',
+    flex: 1,
   }}>
     { props.children }
   </Row>);
@@ -55,22 +55,93 @@ export const ArticleView = ({ showing, onPress, ...props}) => (
   </View>
 );
 
+const AutoCompleteView = ({ list=[], value, onSelect, deleteFunction }) => {
+  const matchList = list.filter(item => item.includes(value));
+  if (value.trim() === "" || matchList.length === 0) {
+    return null;
+  }
+
+  const handleSelect = (value) => {
+    onSelect(value);
+  }
+
+  const styles = StyleSheet.create({
+    container: {
+      backgroundColor: 'white',
+      shadowOffset: { width: 0, height: sizes.xl },
+      paddingHorizontal: sizes.m, 
+      paddingVertical: sizes.s,
+      zIndex: 1,
+    },
+  });
+
+  return (
+    <View style={styles.container}>
+      {
+        matchList.map((item) => (
+          <AutoCompletableListItem 
+            key={item} 
+            label={item} 
+            onSelect={handleSelect} 
+            deleteFunction={() => deleteFunction(item)} 
+            />
+        ))
+      }
+    </View>
+  );
+}
+
+export const AutoCompletableListItem = ({ label, onSelect, deleteFunction }) => {
+  const styles = StyleSheet.create({
+    container: {
+      paddingVertical: sizes.m,
+      paddingHorizontal: sizes.s,
+      width: '100%',
+      borderBottomColor: colors.secondary,
+      borderBottomWidth: 1,
+    }
+  });
+  return (
+    <Row style={styles.container}>
+      <Pressable onPress={() => onSelect(label)} key={label} style={{ width: '100%' }}>
+        <Text bold size={sizes.l}>{ label }</Text>
+      </Pressable>
+      <Pressable onPress={deleteFunction}>
+        <Text>❌</Text>
+      </Pressable>
+    </Row>
+    )
+}
+
 export const ArticleForm = ({ selectedCategory, onSubmit }) => {
-  const name = useRef("");
+  const [name, setName] = useState("");
+  const [namesList, setNamesList] = useState([]);
   const price = useRef("");
   const quantity = useRef("");
   const nameRef = useRef();
   const priceRef = useRef();
   const quantityRef = useRef();
 
+  const styles = StyleSheet.create({
+    form: { position: 'relative', width: '100%', borderRadius: sizes.m },
+    row: { overflow: 'visible', height: 80 },
+  });
+
+  const handleDeleteNameFromList = async (list) => {
+    const newList = await PantryStore.deleteArticleName(list);
+    setNamesList(newList);
+  }
+  
+
   useEffect(() => {
+    PantryStore.getArticlesNames().then(setNamesList);
     setTimeout(() => {
       nameRef.current.focus();
     }, 1);
-  });
+  }, []);
 
   const cleanFields = () => {
-    name.current = CLEAR_TEXT;
+    setName(CLEAR_TEXT);
     price.current = CLEAR_TEXT;
     quantity.current = CLEAR_TEXT;
     nameRef.current.clear();
@@ -82,9 +153,10 @@ export const ArticleForm = ({ selectedCategory, onSubmit }) => {
     if (selectedCategory.trim() === "") {
       selectedCategory = "Varios";
     }
+    
     const article = ArticleBuilder.createLocalArticle({
       id: Math.random() * 1e9, 
-      name: name.current, 
+      name: name, 
       price: price.current, 
       quantity: quantity.current, 
       category: selectedCategory
@@ -94,45 +166,49 @@ export const ArticleForm = ({ selectedCategory, onSubmit }) => {
   }
 
   return (
-  <Col 
-    centered="horizontal" 
-    style={{ 
-      width: '100%',
-      height: 100,
-      borderRadius: sizes.m,
-      }}>
-      <Row style={{ height: 80}} gap={sizes.s}>
-        <Col flex={2}>
-          <TextBox 
-            placeholder="Nombre del Artículo"
-            ref={nameRef}
-            onChangeText={(text) => (name.current = text)}
-            keyboardType="default"
-            onSubmitEditing={submitArticle}
+    <Col 
+      centered="horizontal" 
+      style={styles.form}>
+        <Row style={styles.row} gap={sizes.s}>
+          <Col flex={2}>
+            <TextBox
+              placeholder="Nombre del Artículo"
+              ref={nameRef}
+              value={name}
+              onChangeText={setName}
+              keyboardType="default"
+              onSubmitEditing={submitArticle}
+                />
+          </Col>
+          <Col flex={1}>
+            <TextBox 
+              placeholder="💵" 
+              ref={priceRef}
+              keyboardType='number-pad'
+              onChangeText={(text) => (price.current = text)}
+              onSubmitEditing={submitArticle}
+                />
+          </Col>
+          <Col flex={1}>
+            <TextBox 
+              placeholder="5️⃣"
+              ref={quantityRef}
+              keyboardType='number-pad'
+              onChangeText={(text) => (quantity.current = text)}
+              onSubmitEditing={submitArticle}
               />
-        </Col>
-        <Col flex={1}>
-          <TextBox 
-            placeholder="💵" 
-            ref={priceRef}
-            keyboardType='number-pad'
-            onChangeText={(text) => (price.current = text)}
-            onSubmitEditing={submitArticle}
-              />
-        </Col>
-        <Col flex={1}>
-          <TextBox 
-            placeholder="5️⃣"
-            ref={quantityRef}
-            keyboardType='number-pad'
-            onChangeText={(text) => (quantity.current = text)}
-            onSubmitEditing={submitArticle}
-            />
-        </Col>
-      </Row>
-      <Text centered muted size={sizes.xs}>Presiona ✔️ en el teclado para agregar el artículo</Text>
-  </Col>
-)};
+          </Col>
+        </Row>
+        <Text centered muted size={sizes.xs}>Presiona ✔️ en el teclado para agregar el artículo</Text>
+        <AutoCompleteView 
+          onSelect={setName} 
+          value={name} 
+          list={namesList} 
+          deleteFunction={handleDeleteNameFromList} 
+          />
+    </Col>
+  )
+};
 
 export const ArticlesList = ({ articles, onModify, onDelete, onInfo }) => {
   return (
@@ -167,7 +243,7 @@ export const ArticlesListTotal = ({ total, quantity }) => {
 export const CategoriesCreator = ({ setSelectedCategory }) => {
   const [category, setCategory] = useState("");
   return (
-    <View style={{ height: 44, padding: sizes.xs}}>
+    <View style={{ height: 80, padding: sizes.xs}}>
       <ArticleRow>
         <Col flex={1} >
           <TextBox 
@@ -184,20 +260,15 @@ export const CategoriesCreator = ({ setSelectedCategory }) => {
 
 export const CategoriesList = ({articles, selectedCategory, addArticle, removeArticle, modifyArticle}) => {
   const ArticlesAdderModalRef = useRef();
+  const styles = StyleSheet.create({
+    listContainer: {
+      backgroundColor: colors.background,
+    },
+  });
 
   const submitHandler = (article) => {
     addArticle(article);
     ArticlesAdderModalRef.current.close();
-  }
-
-  function groupBy(array = [], property) {
-    const reducer = function(groups, item) {
-      let title = item[property]
-      let group = groups[title] || (groups[title] = { title, data: []});
-      group.data.push(item);
-      return groups;
-    };
-    return array.reduce(reducer, {});
   }
 
   let list = groupBy(articles, 'category');
@@ -205,6 +276,7 @@ export const CategoriesList = ({articles, selectedCategory, addArticle, removeAr
   
   return (
     <SectionList 
+      style={styles.listContainer}
       removeClippedSubviews
       initialNumToRender={10}
       sections={list}
@@ -240,6 +312,7 @@ export const ArticlesSectionHeader = (props) => {
       justifyContent: 'center',
       flexDirection: 'row',
       width: '100%',
+      height: 80,
       paddingHorizontal: sizes.m,
       paddingTop: sizes.m,
     }}>
@@ -275,9 +348,13 @@ export const PantrySelector = (props) => {
 }
 
 export const ArticlesHeader = ({ quantity, total, addArticle, selectedCategory }) => {
+  const styles = StyleSheet.create({
+    container: {
+      width: '100%',
+    }
+  });
   return (
-  <View style={{ width: '100%'}}>
-    {/**<PantrySelector onChange={props.onSelectPantry} onLoad={props.onLoadPantries} /> */}
+  <View style={styles.container}>
     <ArticlesListTotal total={total} quantity={quantity} />
     <ArticleForm onSubmit={addArticle} selectedCategory={selectedCategory} />
   </View>
@@ -359,7 +436,7 @@ export const Modal = forwardRef(({ title, buttonText, ...props}, ref) => {
     
   return (
     <View style={{ flex: 1 }}>
-      <Button width="100%" onPress={() => setVisible(true)}>
+      <Button width="100%" height={80} onPress={() => setVisible(true)}>
         <Text>{ buttonText }</Text>
       </Button>
       <RNModal 
@@ -423,7 +500,7 @@ export const PantryCreator = (props) => {
                 id: parseInt(Math.random() * 1e9),
                 pantryName
               });
-              await pantryStore.createPantry(pantryName);
+              await PantryStore.createPantry(pantryName);
             }}>
             Crear
           </LazyButton>
@@ -455,10 +532,13 @@ const ArticlesListItemInput = forwardRef(({ defaultValue, formatter, placeholder
         <Text bold>{ showDefaultValue(defaultValue) }</Text>
       </ArticleView>
       <TextBox
+        ref={ref} 
         selectTextOnFocus
         placeholder={placeholder?.toString()} 
         defaultValue={defaultValue?.toString()} 
-        onBlur={submit} ref={ref} style={{flex: 1, ...!showing && { display: 'none' }}} />
+        onBlur={submit} 
+        style={{flex: 1, ...!showing && { display: 'none' }}} 
+        />
     </Row>
   );
 });
@@ -470,9 +550,11 @@ export const DynamicArticlesListItem = function DynamicArticlesListItem({ data, 
 
   function modify() {
     const name = nameRef.current.getValue() || data.name;
+    console.log(nameRef.current.name, data.name);
     const price = priceRef.current.getValue() || data.price;
     const quantity = quantityRef.current.getValue() || data.quantity;
     let modifiedArticle = ArticleBuilder.createLocalArticle(data.id, name, price, quantity, data.category);
+    console.log(modifiedArticle);
     onModify && onModify(modifiedArticle);
   };
 

@@ -1,20 +1,44 @@
 import ArticleBuilder from '../src/objects/ArticleBuilder';
 import Axion from './Axion';
 import Storage from './Storage';
+import { listPusher } from '../res/utils';
+import { ARTICLES_NAMES_LIST } from '../src/constants/storage.constants';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 const storage = Storage.getInstance();
 const axion = Axion.getInstance();
 
-export default class PantryStore {
+const PantryStore = {
 
-  static async createBatch(batch) {
+  async deleteArticleName(name) {
+    let namesList = await this.getArticlesNames();
+    namesList = namesList.filter((item) => item !== name);
+    await this.saveArticlesNamesList(namesList);
+    return namesList;
+  },
+
+  async getArticlesNames () {
+    return await storage.get(ARTICLES_NAMES_LIST) || [];
+  },
+
+  async createBatch(batch) {
     await axion.post("/articles/createBatch", batch);
-  }
+  },
 
-  static async getBatches(pantryId) {
+  async saveArticlesNamesList(list) {
+    await storage.store(ARTICLES_NAMES_LIST, list);
+  },
+
+  async saveArticleNameLocally(articleName) {
+    let articlesNamesList = Array.from( await storage.get(ARTICLES_NAMES_LIST));
+    const newList = listPusher(articlesNamesList, articleName);
+    await storage.store(ARTICLES_NAMES_LIST, newList);
+  },
+
+  async getBatches(pantryId) {
     return axion.get(`/articles/getBatches/${pantryId}`) || [];
-  }
+  },
 
-  static async getPantries() {
+  async getPantries() {
     var pantries = [];
     try {
       const newPantries = await axion.get("/articles/pantries");
@@ -31,35 +55,37 @@ export default class PantryStore {
       }
     }
     return pantries;
-  }
+  },
 
-  static async createPantry(pantryName) {
+  async createPantry(pantryName) {
     return await axion.post("/articles/createPantry", { pantryName });
-  }
+  },
 
-  static async getArticlesActualList() {
+  async getArticlesActualList() {
     return (await storage.get("articleActualList")).map(article => ArticleBuilder.createLocalArticle({...article})) || [];
-  }
+  },
 
-  static async setArticlesActualList(list) {
+  async setArticlesActualList(list) {
     await storage.store("articleActualList", list);
-  }
+  },
 
-  static async getArticles() {
+  async getArticles() {
     let articles = await axion.get("/articles") || [];
     articles = articles.map(article => ArticleBuilder.createArticle({...article}));
     return articles;
-  }
+  },
 
-  static async getBatch(batchId) {
+  async getBatch(batchId) {
     return await axion.get(`/articles/getBatch/${batchId}`);
-  }
+  },
 
-  static async deleteBatch(batchId) {
+  async deleteBatch(batchId) {
     await axion.post(`/articles/deleteBatch`, { batchId });
-  }
+  },
 
-  static async deleteArticle(articleId) {
+  async deleteArticle(articleId) {
     await axion.post("/articles/deleteArticle", { articleId });
   }
 }
+
+export default PantryStore;

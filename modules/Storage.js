@@ -1,4 +1,5 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { log } from '../res/Debug';
 
 class Storage {
     static instance = null;
@@ -15,7 +16,7 @@ class Storage {
             await AsyncStorage.setItem(key, JSON.stringify(value));
             return true;
         } catch (err) {
-            console.log("Storage store error", err);
+            log(err);
             return false;
         }
     }
