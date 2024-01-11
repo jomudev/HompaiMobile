@@ -6,3 +6,4 @@ export const MoneyBag = () => <Text>💲</Text>;
 export const Check = () => <Text>✔️</Text>;
 export const Money = () => <Text>💵</Text>;
 export const Numbers = () => <Text>🔢</Text>
+export const Pencil = () => <Text>✏️</Text>

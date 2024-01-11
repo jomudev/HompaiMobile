@@ -1,4 +1,5 @@
 export const HOME = "Home";
+export const REMINDERS = "Reminders";
 export const ARTICLES = "Articles";
 export const PANTRIES = "Pantries";
 export const PANTRY = "Pantry";

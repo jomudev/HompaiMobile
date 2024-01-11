@@ -4,6 +4,7 @@ import ArticleBuilder from '../objects/ArticleBuilder';
 import { log } from '../../res/Debug';
 import { Alert } from 'react-native';
 import { Modal } from '../components/HomeComponents';
+import AIapi from '../../modules/AIapi';
 
 const getTotal = (articles) => {
   let newTotal = articles.reduce((acc, article) => acc + article.total , 0);
@@ -69,9 +70,11 @@ export const useArticles = () => {
     setArticles(newArray);
   }
 
-  const removeArticle = (articleToRemove) => {
-    let newArray = articles.filter(article => article.id !== articleToRemove.id);
-    setTotal(total.current - articleToRemove.total);
+  const removeArticle = (id) => (articleTotal) => {
+    if (!total)
+      return;
+    let newArray = articles.filter(article => article.id !== id);
+    setTotal(total.current - articleTotal);
     setQuantity(quantity.current - 1);
     setArticles(newArray);
   }
@@ -94,11 +97,3 @@ export const useArticles = () => {
     clearArticles
   };
 };
-
-export const useCategories = () => {
-  const [selectedCategory, setSelectedCategory] = useState("");
-  return {
-    selectedCategory,
-    setSelectedCategory,
-  }
-}

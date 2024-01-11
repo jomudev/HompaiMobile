@@ -7,8 +7,8 @@ const ArticleBuilder = {
     return new Article(id, name, price, quantity)
   },
   
-  createLocalArticle ({id, name, price, quantity, category}) {
-    return new LocallySavedArticle(id, name, price, quantity, category);
+  createLocalArticle ({name, price, quantity, category}) {
+    return new LocallySavedArticle(name, price, quantity, category);
   },
 };
 

@@ -27,3 +27,17 @@ export function groupBy(array = [], property) {
   };
   return array.reduce(reducer, {});
 }
+
+export function getScrollDirection (e) {
+  const { velocity: { x, y } } = e;
+  return { 
+    vertical: y < 0 ? 'up' : y > 0 ? 'down' : null,
+    horizontal: x < 0 ? 'left' : x > 0 ? 'right' : null,
+  }
+}
+
+export const timeOut = (timeout) => new Promise((resolve) => {
+  setTimeout(() => {
+    resolve();
+  }, timeout);
+});

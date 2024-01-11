@@ -8,4 +8,5 @@ export default {
     danger:  "#e4372f",
     warning: "#ddbb00",
     card: "#E8DEF8",
+    white: 'white',
 };

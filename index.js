@@ -1,13 +1,11 @@
 import { registerRootComponent } from 'expo';
 import App from './App';
 
-const lang = navigator.language
+const lang = "es-HN"
 
-globalThis.currency = (value) => parseFloat(value).toLocaleString(lang, { style: 'currency', currency: 'HND'});
+globalThis.currency = (value) => parseFloat(value).toLocaleString(lang, { style: 'currency', currency: 'HNL'});
 globalThis.quantify = (value) => parseFloat(value, 10).toLocaleString();
 window.localeDate = (date) => {
-  date = new Date(date);
-  const lang = 'es-ES';
   let options = {
     year: 'numeric',
     month: 'long',

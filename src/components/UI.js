@@ -1,4 +1,4 @@
-import { forwardRef, useRef, useState, useImperativeHandle } from 'react';
+import { forwardRef, useRef, useState, useImperativeHandle, useEffect } from 'react';
 import { 
   View as RNView, 
   Text as RNText, 
@@ -9,6 +9,9 @@ import {
   ActivityIndicator,
   SafeAreaView,
   ScrollView,
+  Animated,
+  SectionList,
+  VirtualizedList,
  } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import colors from '../../res/colors';
@@ -18,11 +21,11 @@ import {Picker} from '@react-native-picker/picker';
 import { useLinkProps } from '@react-navigation/native';
 import sizes from '../../res/sizes';
 import { Dimensions } from 'react-native';
+import { AnimationFactory } from '../objects/AnimationFactory';
+import { getScrollDirection } from '../../res/utils';
 
 const { width, height } = Dimensions.get("window");
 const windowWidth = width;
-const windowHeight = height;
-
 
 export const ListPicker = forwardRef((props, ref) => {
   const [selectedValue, setSelectedValue] = useState(props.data[0]);
@@ -110,25 +113,44 @@ export const PressableLink = ({to, action, children, ...rest}) => {
   )
 }
 
-export const SwipeableListItem = (props) => {
+export const SwipeableListItem = ({ 
+  style, 
+  containerStyle, 
+  rightPress, 
+  rightContent,
+  rightColor,
+  leftPress, 
+  leftContent, 
+  leftColor,
+  ...props }) => {
+  const styles = StyleSheet.create({
+    main: { },
+    container: {
+      padding: 0,
+      alignItems: 'center',
+      justifyContent: 'center', 
+      height: 80,
+    }
+  });
   return (
     <ListItem.Swipeable
-      {...props}
-      style={{borderRadius: sizes.m, ...props.style}}
-      containerStyle={{padding: 0, alignItems: 'center', borderRadius: sizes.m, justifyContent: 'center', height: '100%', ...props.containerStyle}}
-
-      rightContent={(reset) => <SwipeableButton color={props.rightColor} onPress={() => {
+      {...{
+        style:[styles.main, style],
+        containerStyle: [ styles.container, containerStyle],
+        ...props
+      }}
+      rightContent={(reset) => <SwipeableButton color={rightColor} onPress={() => {
           reset();
-          props?.rightPress();
+          rightPress();
         }}>
-          {props.rightContent}
+          { rightContent }
         </SwipeableButton>
       }
-      leftContent={(reset) => <SwipeableButton color={props.leftColor} onPress={() => {
+      leftContent={(reset) => <SwipeableButton color={leftColor} onPress={() => {
           reset();
-          props?.leftPress();
+          leftPress();
         }}>
-          {props.leftContent}
+          { leftContent }
         </SwipeableButton>
       }>
       <ListItem.Content style={{flex:1}}>
@@ -161,12 +183,12 @@ export const View = ({style, isPressable, scrollable, ...props}) => {
     }
   return (
     <Component {...props} style={[
-        style, 
         {
           overflow: 'visible', 
           width: '100%'
         }, 
-        !props.scrollable && alignments[props.centered]
+        !props.scrollable && alignments[props.centered],
+        style,
         ]}>
       { props.children }
     </Component>
@@ -174,9 +196,19 @@ export const View = ({style, isPressable, scrollable, ...props}) => {
 }
 
 export const Layout = (props) => {
+  const styles = StyleSheet.create({
+    layoutView: {
+      height: '100%',
+      width: '100%',
+      flex: 1,
+      justifyContent: 'center',
+      backgroundColor: colors.background,
+    },
+
+  });
   return (
-    <View style={{...styles.layoutView }} centered={props.centered}>
-      <StatusBar style='auto' />
+    <View style={styles.layoutView} centered={props.centered}>
+      <StatusBar style='dark' />
       { props.children }
     </View>
   );
@@ -188,27 +220,46 @@ export const Row = ({ flex, style, centeredAll, onPress, isPressable, gap, ...pr
   const styles = StyleSheet.create({
     row: {
       flexDirection: 'row',
+      gap,
+      flex,
     }
   });
   return (
-    <View 
-      isPressable={isPressable} 
-      onPress={onPress} 
-      centered={centeredAll || "horizontal"} 
-      style={[
-        style,
-        styles.row,
-        flex && { flex },
-        gap && { gap },
-      ]}>
+    <View {
+      ...{
+        isPressable,
+        onPress,
+        centered: centeredAll || "horizontal",
+        style: [ styles.row, style ],
+      }
+    }>
       { props.children }
     </View>
   );
 }
 
-export const Col = (props) => {
+export const Col = ({
+  style, 
+  isPressable, 
+  onPress, 
+  flex, 
+  centeredAll,
+  ...props}) => {
+    const styles = StyleSheet.create({
+      container: {
+        flexDirection: 'column',
+        flex,
+      }
+    });
   return (
-    <View isPressable={props.isPressable} onPress={props.onPress} centered={props.centeredAll || "vertical"} style={{ flexDirection: 'column', ...props.style, ...props.flex && { flex: props.flex }  }}>
+    <View {
+      ...{
+        isPressable, 
+        onPress, 
+        centered: centeredAll || "vertical",
+        style: [styles.container, style],
+        }
+      }>
       { props.children }
     </View>
   );
@@ -277,19 +328,23 @@ export const textSizes = (size) => {
   return headingSizes[size] || 12;
 }
 
-export const Text = ({ muted, style, color, centered, centeredVertical, bold, size, ...props }) => {
+export const Text = ({ muted, align, style, color, numberOfLines = 1, centered, centeredVertical, bold, size, ...props }) => {
+  const styles = StyleSheet.create({
+    main: {
+      textAlign: align || (centered && 'center'),
+      textAlignVertical: centeredVertical && 'center',
+      color: muted ? colors.textMuted : (colors[color] || color) || colors.text,
+      fontWeight: bold && 'bold',
+      fontSize: textSizes(size),
+    }
+  });
   return (
     <RNText
-      style={[
-        centered ? { textAlign: 'center' } : null, 
-        centeredVertical ? { textAlignVertical: 'center' } : null,
-        { color: muted ? colors.textMuted : (colors[color] || color) || colors.text },
-        bold ? { fontWeight: 'bold' } : null,
-        { fontSize: textSizes(size) },
-        style,
-        ]} 
-      {...props}
-      numberOfLines={ props.numberOfLines || 1 }
+      {...{
+        style: [styles.main, style], 
+        numberOfLines,
+        ...props
+      }}
        >
       { props.children }
     </RNText>
@@ -313,27 +368,52 @@ export const Heading = ({ centered, style, flex, size , ...props}) => {
   );
 }
 
-export const TextBox = forwardRef(function TextBox(props, ref) {
+export const TextBox = forwardRef(function TextBox({
+  placeholder,
+  selectTextOnFocus,
+  onChangeText,
+  keyboardType,
+  onSubmitEditing,
+  defaultValue,
+  ...props
+}, ref) {
   const value = useRef(props.value);
   const inputRef = useRef();
   const createHandle = () => ({
     getValue: () => value.current,
     focus: () => inputRef.current.focus(),
     clear: () => inputRef.current.clear(),
+    setValue: (value) => (inputRef.current.value = value),
   });
   useImperativeHandle(ref, createHandle, []);
   
   function handleOnChangeText(text) {
-    props.onChangeText && props.onChangeText(text); 
+    onChangeText && onChangeText(text); 
     value.current = text;
   }
 
+  const styles = StyleSheet.create({
+    main: {
+      borderColor: colors.card,
+      backgroundColor: colors.secondary,
+      padding: sizes.m,
+      fontSize: 12,
+      width: '100%',
+      borderRadius: sizes.s
+    }
+  });
+
   return (
     <TextInput 
-      {...props}
+      selectTextOnFocus={selectTextOnFocus}
       ref={inputRef} 
+      placeholderTextColor={colors.textMuted}
+      defaultValue={defaultValue}
+      placeholder={placeholder}
+      keyboardType={keyboardType}
+      onSubmitEditing={onSubmitEditing}
       onChangeText={handleOnChangeText} 
-      style={{ ...props.style, ...styles.minimalTextBox }} 
+      style={[styles.main, props.style]} 
       />
     )
 });
@@ -350,16 +430,128 @@ export const SectionsList = (props) => {
     )
 }
 
-export const FAB = ({ actions, ...props }) => {
+const toggleFAB = (ref) => {
+  let prevVertical = null;
+  return (e) => {
+    const dir = getScrollDirection(e.nativeEvent);
+    if (prevVertical === dir.vertical) {
+      return;
+    }
+    dir.vertical === 'up' && ref.current.show();
+    dir.vertical === 'down' && ref.current.hide();
+    prevVertical = dir.vertical;
+  };
+}
+
+export const ListFAB = ({
+  actions,
+  data,
+  renderItem,
+  ...props
+}) => {
+  const FABref = useRef();
   return (
-    <SafeAreaView style={styles.FAB}>
-        { props.children }
-      <View style={styles.FABContainer}>
-        { actions.map(({ value, action }) => <FABButton key={value} action={action} value={value} />) }
-      </View>
-    </SafeAreaView>
+    <>
+      <VirtualizedList 
+        {...{
+          data,
+          renderItem,
+          keyExtractor: (item) => item.id + data.length + Math.random().toString(12).substring(0),
+          initialNumToRender: 5,
+          getItemCount: (data) => data.length,
+          getItem: (data, index) => data,
+        }}
+        removeClippedSubviews
+        style={styles.FAB}
+        onScroll={toggleFAB(FABref)}
+      />
+      <FABactions ref={FABref} actions={actions} />
+    </>
   );
 }
+
+export const SectionedFAB = ({ 
+  actions,
+  sections, 
+  data,
+  initialNumToRender, 
+  keyExtractor, 
+  renderItem, 
+  renderSectionHeader,
+  ...props }) => {
+    let FABref = useRef();
+
+    const styles = StyleSheet.create({
+      FABContentContainer: {
+        overflow: 'visible',
+        flex: 1,
+      }
+    });
+
+    return (
+      <View style={styles.FABContentContainer}> 
+        <SectionList
+          {...{
+            sections,
+            renderItem,
+            initialNumToRender,
+            keyExtractor,
+            renderSectionHeader,
+            ...props,
+          }}
+          removeClippedSubviews
+          style={styles.FAB}
+          onScroll={toggleFAB(FABref)}
+          />
+          <FABactions ref={FABref} actions={actions} />
+      </View>
+    )
+}
+
+export const FABactions = forwardRef( function FABactions({actions}, ref) {
+  return (
+    <FABContainer ref={ref} >
+      { actions.map(({ value, action }) => <FABButton key={value} action={action} value={value} />) }
+    </FABContainer>
+  )
+});
+
+useAnimation = (effect, { toValue = 500, duration = 300, ...effectOptions }) => {
+  const animation = useRef(AnimationFactory.SimpleAnimation()).current;
+
+  const animateTo = (newValue) => {
+    Animated[effect](animation, {
+      toValue: newValue,
+      duration: duration,
+      useNativeDriver: true,
+    }).start();
+  }
+
+  useEffect(() => {
+    Animated[effect](animation, {
+      toValue,
+      duration,
+      useNativeDriver: true,
+      ...effectOptions
+    });
+  }, [animation]);
+  return { animationValue: animation, animateTo };
+};
+
+export const FABContainer = forwardRef(({ children }, ref) => {
+  const { animationValue, animateTo } = useAnimation("timing", { toValue: 300 });
+  
+  useImperativeHandle(ref, () => ({
+    show: () => { animateTo(0) },
+    hide: () => { animateTo(300) },
+  }));
+
+  return (
+    <Animated.View style={[styles.FABContainer, { transform: [{ translateY: animationValue }]}]}>
+      { children }
+    </Animated.View>
+  )
+});
 
 export const FABButton = ({action, value}) => {
   return (
@@ -385,13 +577,6 @@ export const DataList = (props) => {
 }
 
 export const styles = StyleSheet.create({
-  layoutView: {
-    height: '100%',
-    width: '100%',
-    flex: 1,
-    justifyContent: 'center',
-    backgroundColor: colors.background,
-  },
   heading: {
     width: '100%',
     fontWeight: 'bold',
@@ -411,16 +596,17 @@ export const styles = StyleSheet.create({
     position: 'absolute',
     right: 0,
     bottom: 0,
-    maxWidth: windowWidth / 4,
+    maxWidth: windowWidth / 2,
     display: 'flex',
     flexDirection: 'column',
-    alignItems: 'center',
+    alignItems: 'flex-end',
     padding: sizes.s,
     justifyContent: 'center',
   },
   FABButton: {
-    width: '90%',
     height: 60,
+    paddingHorizontal: sizes.s,
+    paddingVertical: sizes.m,
     borderRadius: sizes.m,
     elevation: sizes.s,
     backgroundColor: colors.primary,
@@ -445,6 +631,7 @@ export const styles = StyleSheet.create({
   },
   minimalTextBox: {
     height: '100%',
+    maxHeight: 100,
     width: '100%',
     borderRadius: sizes.m,
     textAlign: 'center',
@@ -462,7 +649,6 @@ export const styles = StyleSheet.create({
     gap: sizes.m,
   },
   swipeableButton: {
-    borderRadius: sizes.m,
     alignItems:'center',
     justifyContent: 'center',
     minHeight: '100%',

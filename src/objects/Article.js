@@ -1,6 +1,6 @@
 export default class Article {
-  constructor(id, name, price, quantity) {
-    this.id = id;
+  constructor(name, price, quantity) {
+    this.id = Math.random().toString(12).substring(0);
     this.name = name;
     this.price = this.initPrice(price);
     this.quantity = this.initQuantity(quantity);

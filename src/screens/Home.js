@@ -1,17 +1,16 @@
 import { 
-  Layout, SectionsList,
+  Layout
 } from '../components/UI';
 import {
   ArticlesHeader,
-  ArticlesFooter,
   CategoriesList,
   CategoriesCreator,
-  HomeFAB,
 } from '../components/HomeComponents';
 import { useArticles, useCategories } from '../hooks/ArticlesHooks';
-import { memo } from 'react';
+import { useRef } from 'react';
+import { REMINDERS } from '../constants/screens';
 
-export default function Home () {
+export default function Home ({ navigation }) {
   const {
     articles, 
     total, 
@@ -21,43 +20,27 @@ export default function Home () {
     removeArticle, 
     clearArticles
   } = useArticles();
-  const {
-    selectedCategory,
-    setSelectedCategory
-  } = useCategories();
 
-
+  const selectedCategory = useRef("");
+  const setSelectedCategory = (value) => selectedCategory.current = value;
   return (
     <Layout>
-      <HomeFAB clearArticles={clearArticles} >
-      <CategoriesCreator 
-        category={selectedCategory} 
-        setSelectedCategory={setSelectedCategory} 
-        />
       <ArticlesHeader 
         total={total} 
         quantity={quantity} 
         selectedCategory={selectedCategory} 
-        addArticle={(article) => addArticle(article)} 
+        setSelectedCategory={setSelectedCategory}
+        addArticle={addArticle} 
         />
       <CategoriesList
           addArticle={addArticle}
           selectedCategory={selectedCategory}
-          articles={articles} 
+          articles={articles}
+          navTo={(screen) => navigation.navigate(REMINDERS)}
+          clearArticles={clearArticles}
           modifyArticle={modifyArticle} 
           removeArticle={removeArticle} 
           />
-      </HomeFAB>
     </Layout>
   );
 };
-
-/**
- * <ArticlesList 
-            articles={articles} 
-            categories={categories}
-            onModify={modifyArticle} 
-            onInfo={() => Alert.alert("Función no implementada")}
-            onDelete={removeArticle}
-            />
- */

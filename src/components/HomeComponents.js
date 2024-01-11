@@ -5,7 +5,6 @@ import React,
     useRef, 
     forwardRef, 
     useImperativeHandle,
-    useCallback,
   } from 'react';
 import {
   Text, 
@@ -15,23 +14,21 @@ import {
   DataList,
   SwipeableListItem,
   View,
-  LazyButton,
   Button,
   Heading,
-  ListPicker,
-  FAB,
-  DateTimePicker,
-  SectionsList
+  SectionedFAB
 } from './UI';
 import colors from '../../res/colors';
-import { ActivityIndicator, Modal as RNModal, StyleSheet, Alert, SectionList, Pressable } from 'react-native';
+import { Modal as RNModal, StyleSheet, Alert, SectionList, Pressable, VirtualizedList, ScrollView } from 'react-native';
 import sizes from '../../res/sizes';
-import { Keyboard } from 'react-native';
 import ArticleBuilder from '../objects/ArticleBuilder';
-import { Info, Delete, MoneyBag, Numbers } from '../../res/icons';
+import { MoneyBag, Numbers } from '../../res/icons';
 import PantryStore from '../../modules/PantryStore';
-import { groupBy } from '../../res/utils';
-import { ARTICLES_NAMES_LIST } from '../constants/storage.constants';
+import { groupBy, timeOut } from '../../res/utils';
+import getInitials from '../../res/getInitials';
+import useArticlesNames from '../hooks/ArticlesNames';
+import ModifyArticleForm from './HomeComponents/ModifyArticleForm';
+import { Delete, Pencil } from '../../res/icons';
 const CLEAR_TEXT = "";
 
 export const ArticleRow = (props) => (
@@ -42,15 +39,19 @@ export const ArticleRow = (props) => (
     { props.children }
   </Row>);
 
-export const ArticleView = ({ showing, onPress, ...props}) => (
-  <View isPressable={true} centered onPress={onPress} style={{
-    flex: 1,
-    ...showing && { display: 'none' },
-    borderRadius: 16,
-    height: '100%',
-    width: '100%',
-    backgroundColor: colors.secondary,
-    }} centered>
+export const ArticleView = ({ onPress, ...props}) => (
+  <View 
+    isPressable
+    centered 
+    onPress={onPress} 
+    style={{
+      flex: 1,
+      ...showing && { display: 'none' },
+      borderRadius: 16,
+      height: '100%',
+      width: '100%',
+      backgroundColor: colors.secondary,
+    }}>
       {props.children}
   </View>
 );
@@ -72,22 +73,23 @@ const AutoCompleteView = ({ list=[], value, onSelect, deleteFunction }) => {
       paddingHorizontal: sizes.m, 
       paddingVertical: sizes.s,
       zIndex: 1,
+      maxHeight: 200,
     },
   });
 
   return (
-    <View style={styles.container}>
+    <ScrollView style={styles.container}>
       {
         matchList.map((item) => (
           <AutoCompletableListItem 
-            key={item} 
-            label={item} 
+            key={JSON.stringify(item)} 
+            label={ item?.name ? `${item.name} ${item.price}` : item} 
             onSelect={handleSelect} 
             deleteFunction={() => deleteFunction(item)} 
             />
         ))
       }
-    </View>
+    </ScrollView>
   );
 }
 
@@ -115,31 +117,31 @@ export const AutoCompletableListItem = ({ label, onSelect, deleteFunction }) => 
 
 export const ArticleForm = ({ selectedCategory, onSubmit }) => {
   const [name, setName] = useState("");
-  const [namesList, setNamesList] = useState([]);
   const price = useRef("");
   const quantity = useRef("");
   const nameRef = useRef();
   const priceRef = useRef();
   const quantityRef = useRef();
+  selectedCategory = selectedCategory.current || "Varios";
 
   const styles = StyleSheet.create({
-    form: { position: 'relative', width: '100%', borderRadius: sizes.m },
+    form: { 
+      position: 'relative', 
+      alignItems: 'flex-start',
+      width: '100%', 
+      borderRadius: sizes.m , 
+      paddingHorizontal: sizes.xs
+    },
     row: { overflow: 'visible', height: 80 },
   });
 
-  const handleDeleteNameFromList = async (list) => {
-    const newList = await PantryStore.deleteArticleName(list);
-    setNamesList(newList);
-  }
   
-
   useEffect(() => {
-    PantryStore.getArticlesNames().then(setNamesList);
-    setTimeout(() => {
-      nameRef.current.focus();
-    }, 1);
-  }, []);
-
+    const focusName = async () => await timeOut(100)
+      .then(() => (nameRef.current.focus()));
+    focusName();
+  },  []);
+  
   const cleanFields = () => {
     setName(CLEAR_TEXT);
     price.current = CLEAR_TEXT;
@@ -149,27 +151,23 @@ export const ArticleForm = ({ selectedCategory, onSubmit }) => {
     quantityRef.current.clear();
   }
 
-  const submitArticle = () => {
-    if (selectedCategory.trim() === "") {
+  const submitArticle = async () => {
+    if (selectedCategory.trim() === "")
       selectedCategory = "Varios";
-    }
     
     const article = ArticleBuilder.createLocalArticle({
-      id: Math.random() * 1e9, 
       name: name, 
       price: price.current, 
       quantity: quantity.current, 
       category: selectedCategory
     });
-    onSubmit(article)
     cleanFields();
+    onSubmit(article);
   }
-
   return (
     <Col 
-      centered="horizontal" 
       style={styles.form}>
-        <Row style={styles.row} gap={sizes.s}>
+        <Row style={styles.row} gap={sizes.xs}>
           <Col flex={2}>
             <TextBox
               placeholder="Nombre del Artículo"
@@ -182,7 +180,7 @@ export const ArticleForm = ({ selectedCategory, onSubmit }) => {
           </Col>
           <Col flex={1}>
             <TextBox 
-              placeholder="💵" 
+              placeholder="Precio" 
               ref={priceRef}
               keyboardType='number-pad'
               onChangeText={(text) => (price.current = text)}
@@ -191,7 +189,7 @@ export const ArticleForm = ({ selectedCategory, onSubmit }) => {
           </Col>
           <Col flex={1}>
             <TextBox 
-              placeholder="5️⃣"
+              placeholder="Cantidad"
               ref={quantityRef}
               keyboardType='number-pad'
               onChangeText={(text) => (quantity.current = text)}
@@ -200,12 +198,6 @@ export const ArticleForm = ({ selectedCategory, onSubmit }) => {
           </Col>
         </Row>
         <Text centered muted size={sizes.xs}>Presiona ✔️ en el teclado para agregar el artículo</Text>
-        <AutoCompleteView 
-          onSelect={setName} 
-          value={name} 
-          list={namesList} 
-          deleteFunction={handleDeleteNameFromList} 
-          />
     </Col>
   )
 };
@@ -219,8 +211,6 @@ export const ArticlesList = ({ articles, onModify, onDelete, onInfo }) => {
           data={item}
           key={index * Math.random()}
           onModify={onModify}
-          swipeableLeftContent={() => <Info />}
-          swipeableRightContent={() => <Delete />}
           swipeableLeftFunction={onInfo}
           swipeableRightFunction={onDelete}
         />)}
@@ -228,39 +218,56 @@ export const ArticlesList = ({ articles, onModify, onDelete, onInfo }) => {
 }
 
 export const ArticlesListTotal = ({ total, quantity }) => {
+  const styles = StyleSheet.create({
+    container: {
+      justifyContent: 'space-between',
+    }
+  });
   return (
-    <Heading centered size="l" muted > 
-      <MoneyBag />
-      { currency(total)} 
-      {' '}
-      <Numbers />
-      {' '}
-      { quantity }
+    <View style={styles.container}>
+      <Heading size="l"> 
+        {' Total: '}
+        { currency(total)} 
       </Heading>
-  );
-}
-
-export const CategoriesCreator = ({ setSelectedCategory }) => {
-  const [category, setCategory] = useState("");
-  return (
-    <View style={{ height: 80, padding: sizes.xs}}>
-      <ArticleRow>
-        <Col flex={1} >
-          <TextBox 
-            placeholder="Categoría"
-            value={category}
-            onChangeText={setCategory}
-            onEndEditing={() => setSelectedCategory(category)}
-          />
-        </Col>
-      </ArticleRow>
+      <Heading size="s">
+        {' Cantidad: '}
+        { quantity }
+      </Heading>
     </View>
   );
 }
 
-export const CategoriesList = ({articles, selectedCategory, addArticle, removeArticle, modifyArticle}) => {
-  const ArticlesAdderModalRef = useRef();
+export const CategoriesCreator = ({ onChange }) => {
   const styles = StyleSheet.create({
+    container: {
+      padding: 6,
+    }
+  });
+  return (
+    <View style={styles.container}>
+        <TextBox 
+          placeholder="Categoría"
+          onChangeText={onChange}
+          selectTextOnFocus
+        />
+    </View>
+  );
+}
+
+export const CategoriesList = ({
+  navTo,
+  articles,
+  selectedCategory, 
+  clearArticles,
+  addArticle, 
+  removeArticle, 
+  modifyArticle,
+}) => {
+  const modalRef = useRef();
+  const styles = StyleSheet.create({
+    mainContainer: {
+      height: '100%',
+    },  
     listContainer: {
       backgroundColor: colors.background,
     },
@@ -268,163 +275,111 @@ export const CategoriesList = ({articles, selectedCategory, addArticle, removeAr
 
   const submitHandler = (article) => {
     addArticle(article);
-    ArticlesAdderModalRef.current.close();
+    modalRef.current.close();
   }
 
   let list = groupBy(articles, 'category');
   list = Object.keys(list).map(key => list[key]);
-  
+
+
   return (
-    <SectionList 
-      style={styles.listContainer}
-      removeClippedSubviews
-      initialNumToRender={10}
-      sections={list}
-      keyExtractor={(item, index) => item.name + item.price + item.quantity + index}
-      renderItem={({item}) => <DynamicArticlesListItem
-          data={item}
-          onModify={(article) => modifyArticle(article)}
-          swipeableRightContent={() => <Text>🗑️</Text>}
-          swipeableLeftFunction={() => {}}
-          swipeableRightFunction={removeArticle}
-        />}
-      renderSectionHeader={({section: {title}}) => (
-        <ArticlesSectionHeader>
-          <Heading size="xl" flex={1} >{ title }</Heading>
+      <SectionedFAB
+        actions={[
           {
-            selectedCategory !== title ? 
-              (
-                <Modal ref={ArticlesAdderModalRef} buttonText="Agregar artículo" title={`Agregar artículo a ${title}`}>
-                  <ArticleForm onSubmit={submitHandler} selectedCategory={title} />
-                </Modal>
-              ) : null
+            value: '🧹 Limpiar',
+            action: clearArticles,
           }
-        </ArticlesSectionHeader>
-      )}
-    />
+        ]}
+        style={styles.listContainer}
+        initialNumToRender={5}
+        sections={list}
+        keyExtractor={(item, index) => item.name + item.price + item.quantity + index}
+        renderItem={({ item }) => (
+          <DynamicArticlesListItem
+            data={item}
+            modifyArticle={modifyArticle}
+            removeArticle={removeArticle}
+            />
+          )}
+        renderSectionHeader={({section}) => (
+          <CategoriesListHeader {...{ 
+            selectedCategory,
+            section, 
+            modalRef, 
+            submitHandler 
+            }}/>
+          )}
+      />
   );
 };
 
-export const ArticlesSectionHeader = (props) => {
-  return (
-    <View style={{
+export const CategoriesListHeader = ({ section: { title }, modalRef, submitHandler }) => (
+  <ArticlesSectionHeader>
+    <Heading size="xl" flex={1} >{ title }</Heading>
+    <ActionableModal ref={modalRef} buttonText="Agregar artículo" title={`Agregar artículo a ${title}`}>
+      <ArticleForm onSubmit={submitHandler} selectedCategory={{ current: title}} />
+    </ActionableModal>
+  </ArticlesSectionHeader>
+);
+
+export const ModifyArticleModal = forwardRef(({ data, onSubmit, onClose }, ref) => (
+  <Modal onClose={onClose} ref={ref} title={`Modificar Artículo`}>
+    <ModifyArticleForm data={data} onSubmit={onSubmit} />
+  </Modal>
+));
+
+export const ArticlesSectionHeader = ({ noHeight, ...props }) => {
+  const styles = StyleSheet.create({
+    container: {
       alignItems: 'center',
       justifyContent: 'center',
       flexDirection: 'row',
       width: '100%',
-      height: 80,
+      height: noHeight ? 0 : 80,
       paddingHorizontal: sizes.m,
       paddingTop: sizes.m,
-    }}>
+    }
+  })
+  return (
+    <View style={styles.container}>
       { props.children }
     </View>
   )
 }
 
-export const PantrySelector = (props) => {
-  const [pantries, setPantries] = useState([]);
-  const [isLoading, setLoading] = useState(true);
-  const modalRef = useRef();
-
-  useEffect(() => {
-    pantryStore.getPantries().then(pantries => {
-      setPantries(pantries);
-      props.onLoad(pantries);
-      setLoading(false);
-    });
-  }, []);
-
-  return isLoading ? <ActivityIndicator size="small" /> : (
-      <ListPicker 
-        initialValue={pantries[0]?.name}
-        style={{zIndex: 1, marginBottom: 16, marginTop: 16}}
-        onChange={props.onChange} 
-        data={pantries.map(pantry => pantry.name)}>
-        <Modal ref={modalRef} buttonText="Nueva Despensa">
-          <PantryCreator title={"Agrega una nueva despensa"} onSubmit={(pantry) => setPantries(pantries.concat(pantry))}/>
-        </Modal>
-      </ListPicker>
-    )
-}
-
-export const ArticlesHeader = ({ quantity, total, addArticle, selectedCategory }) => {
+export const ArticlesHeader = ({ quantity, total, addArticle, selectedCategory, setSelectedCategory }) => {
   const styles = StyleSheet.create({
     container: {
-      width: '100%',
+      width: '100%'
     }
   });
   return (
   <View style={styles.container}>
     <ArticlesListTotal total={total} quantity={quantity} />
+    <CategoriesCreator onChange={setSelectedCategory} />
     <ArticleForm onSubmit={addArticle} selectedCategory={selectedCategory} />
   </View>
 )}
 
-export const ArticlesFooter = ({clearList, ...props}) => {
-  const [hidden, hide] = useState(false);
-  const handleHide = useCallback(() => hide(true));
-  const handleShow = useCallback(() => hide(false));
-
-  useEffect(() => {
-    Keyboard.addListener("keyboardDidShow", handleHide); 
-    Keyboard.addListener("keyboardDidHide", handleShow); 
-    return () => {
-      Keyboard.removeAllListeners("keyboardDidHide");
-      Keyboard.removeAllListeners("keyboardDidShow");
-    }
-  }, []);
-
+export const Modal = forwardRef(({ title, onClose, children }, ref) => {
   return (
-      <View style={{paddingBottom: 60, backgroundColor: "none", display: hidden ? "none" : "flex"}}>
-        <Button 
-          style={{
-            marginTop: sizes.m,
-            width: '50%',
-            alignSelf: 'center',
-            backgroundColor: colors.secondary,
-            padding: sizes.m, 
-          }}
-          onPress={clearList}>
-          🧹 Limpiar Lista
-        </Button>
-        {/**<LazyButton
-          style={{
-            marginTop: sizes.m,
-            width: '50%',
-            alignSelf: 'center',
-            backgroundColor: colors.warning,
-            padding: sizes.m, 
-          }}
-          textStyle={{
-            color: 'white',
-          }}
-          onPress={async () => {
-            setIsLoading(true);
-            await props.onSubmit();
-            setIsLoading(false);
-          }}
-          >
-          📃 Guardar Lista
-        </LazyButton> */}
-      </View>)
-}
+    <RNModal
+      visible={true}
+      transparent
+      animationType='fade'
+      onRequestClose={onClose}
+    >
+      <View style={styles.modalContainer}>
+        <View style={styles.modalView}>
+        <Heading centered style={{ marginBottom: sizes.m }}>{ title }</Heading>
+        { children }
+        </View>
+      </View>
+    </RNModal>
+  )
+});
 
-export const HomeFAB = ({ clearArticles, ...props }) => {
-  return (
-    <FAB actions={[
-      {
-        value: '🧹 Limpiar',
-        action: clearArticles,
-      },
-    ]} >
-      {
-        props.children
-      }
-    </FAB>
-  );
-};
-
-export const Modal = forwardRef(({ title, buttonText, ...props}, ref) => {
+export const ActionableModal = forwardRef(({ title, buttonText, ...props}, ref) => {
   const [visible, setVisible] = useState(false);
 
   const imperativeMethods = () => ({
@@ -436,9 +391,13 @@ export const Modal = forwardRef(({ title, buttonText, ...props}, ref) => {
     
   return (
     <View style={{ flex: 1 }}>
-      <Button width="100%" height={80} onPress={() => setVisible(true)}>
-        <Text>{ buttonText }</Text>
-      </Button>
+      {
+        buttonText && (
+          <Button width="100%" height={80} onPress={() => setVisible(true)}>
+            <Text>{ buttonText }</Text>
+          </Button>
+        )
+      }
       <RNModal 
         visible={visible}
         transparent
@@ -456,173 +415,73 @@ export const Modal = forwardRef(({ title, buttonText, ...props}, ref) => {
       </RNModal>
     </View>
   )
-})
-
-export const Creator = ({ title, onSubmit }) => {
-  const inputRef = useRef();
-
-  return (
-    <View centered >
-      <Heading size="l" bold >{ title }</Heading>
-      <Row gap={16} style={{ height: 40 }}>
-        <Col flex={1}>
-          <TextBox 
-            placeholder="Nombre"
-          />
-        </Col>
-        <Col flex={1}>
-          <LazyButton onPress={() => onSubmit && onSubmit(inputRef.current.getValue())}>
-            Crear
-          </LazyButton>
-        </Col>
-      </Row>
-    </View>
-  );
-}
-
-export const PantryCreator = (props) => {
-  const inputRef = useRef();
-
-  return (
-    <View centered >
-      <Heading size="l" bold >{ props.title }</Heading>
-      <Row gap={16} style={{ height: 40 }}>
-        <Col flex={1}>
-          <TextBox 
-            ref={inputRef}
-            placeholder="Nombre"
-          />
-        </Col>
-        <Col flex={1}>
-          <LazyButton onPress={async () => {
-              const pantryName = inputRef.current.getValue();
-              props?.onSubmit({
-                id: parseInt(Math.random() * 1e9),
-                pantryName
-              });
-              await PantryStore.createPantry(pantryName);
-            }}>
-            Crear
-          </LazyButton>
-        </Col>
-      </Row>
-    </View>
-  );
-}
-
-const ArticlesListItemInput = forwardRef(({ defaultValue, formatter, placeholder, initialValue, item, ...props}, ref) => {
-  const [showing, setShowing] = useState(false);
-  const showDefaultValue = (value) => formatter ? formatter(value) : value;
-
-  function showHandle() {
-    setShowing(true); 
-    setTimeout(() => {
-      ref.current.focus();
-    }, 250);
-  }
-
-  function submit()  {
-    showing && props?.onBlur();
-    setShowing(false);
-  }
-
-  return (
-    <Row style={{height: '100%'}}>
-      <ArticleView showing={showing} onPress={showHandle} >
-        <Text bold>{ showDefaultValue(defaultValue) }</Text>
-      </ArticleView>
-      <TextBox
-        ref={ref} 
-        selectTextOnFocus
-        placeholder={placeholder?.toString()} 
-        defaultValue={defaultValue?.toString()} 
-        onBlur={submit} 
-        style={{flex: 1, ...!showing && { display: 'none' }}} 
-        />
-    </Row>
-  );
 });
 
-export const DynamicArticlesListItem = function DynamicArticlesListItem({ data,  onModify, ...props}) {
-  const nameRef = useRef();
-  const priceRef = useRef();
-  const quantityRef = useRef();
+export const DynamicArticlesListItem = function DynamicArticlesListItem({ data, modifyArticle, removeArticle, ...props}) {
+  const [modifierModalIsOpen, setModifierModalIsOpen] = useState(false);
+  const styles = StyleSheet.create({
+    initialsContainer: {
+      maxWidth: 60,
+      minHeight: 60,
+      alignItems: 'center',
+      justifyContent: 'center',
+      borderRadius: 1000,
+      backgroundColor: colors.card,
+    },
+    container: { 
+      height: 80,
+      backgroundColor: colors.background,
+    }
+  });
+  
+  const modifyArticleModalRef = useRef();
 
-  function modify() {
-    const name = nameRef.current.getValue() || data.name;
-    console.log(nameRef.current.name, data.name);
-    const price = priceRef.current.getValue() || data.price;
-    const quantity = quantityRef.current.getValue() || data.quantity;
-    let modifiedArticle = ArticleBuilder.createLocalArticle(data.id, name, price, quantity, data.category);
-    console.log(modifiedArticle);
-    onModify && onModify(modifiedArticle);
-  };
+  const { id, name, initials, price, quantity, total } = {
+    ...data,
+    initials: getInitials(data.name),
+    price: currency(data.price),
+    total: currency(data.total),
+  }
 
   return (
-    <SwipeableListItem
-      style={{ 
-        height: 80,
-        borderRadius: sizes.m,
-        padding: sizes.s,
-        backgroundColor: colors.background,
-      }}
-      rightContent={props?.swipeableRightContent}
-      rightColor={colors.danger}
-      leftColor={colors.secondary}
-      rightPress={() => props?.swipeableRightFunction(data)}
-      leftPress={() => props?.swipeableLeftFunction(data)}
-      >
-      <ArticleRow>
-        <Col flex={2}>
-          <ArticlesListItemInput
-            onBlur={modify}
-            placeholder="Nombre"
-            defaultValue={data.name}
-            ref={nameRef}
-            />
-        </Col>
-        <Col flex={1}>
-          <ArticlesListItemInput
-            onBlur={modify}
-            placeholder="💵"
-            keyboardType="number-pad"
-            defaultValue={data.price}
-            formatter={currency}
-            ref={priceRef}
-            />
-        </Col>
-        <Col flex={1}>
-          <ArticlesListItemInput
-            onBlur={modify}
-            placeholder={'🔢'}
-            formatter={quantify}
-            keyboardType="number-pad"
-            defaultValue={data.quantity}
-            ref={quantityRef}
-            />
-        </Col>
-        <Col flex={1}>
-          <ArticleView>
-            <Text muted >{ currency(data.total) }</Text>
-          </ArticleView>
-        </Col>
-    </ArticleRow>
-    {
-      /**
-      <ArticleRow>
-        <DateTimePicker 
-          label="Caducidad"
-          onChange={(value) => props.itemModifier(item.id, "expirationDate", value)}
-          ref={expirationDateRef} 
-          initialValue={item.expirationDate}
-          style={{
-            elevation: 0,
-            padding: 0,
-          }}/>
-      </ArticleRow>
-        */
-    }
-  </SwipeableListItem>
+    <>
+      <SwipeableListItem
+        style={styles.container}
+        rightContent={<Delete />}
+        leftContent={<Pencil />}
+        rightColor={colors.danger}
+        leftColor={colors.secondary}
+        rightPress={() => removeArticle(id)(data.total)}
+        leftPress={ () => setModifierModalIsOpen(true)}
+        >
+          <ArticleRow>
+            <Col flex={1}>
+              <View style={styles.initialsContainer}>
+                <Text bold sizes="m" color={colors.textMuted}>{ initials }</Text>
+              </View>
+            </Col>
+            <Col flex={2} style={styles.info}>
+              <Text style={{alignSelf: 'flex-start'}} bold >{quantity }{' '}{ name }</Text>
+              <Text style={{alignSelf: 'flex-start'}} muted>{ price }</Text>
+            </Col>
+            <Col flex={2}>
+              <Text bold size="m" >{ total }</Text>
+            </Col>
+        </ArticleRow>
+      </SwipeableListItem>
+      {
+        modifierModalIsOpen 
+        && <ModifyArticleModal 
+            onClose={() => setModifierModalIsOpen(false)} 
+            onSubmit={(modifiedArticle) => {
+              modifyArticle(modifiedArticle); 
+              setModifierModalIsOpen(false);
+            }}
+            data={data} 
+            ref={modifyArticleModalRef} 
+            /> 
+      }
+    </>
 )};
 
 const styles = StyleSheet.create({
